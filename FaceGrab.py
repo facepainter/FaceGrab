@@ -57,7 +57,7 @@ class FaceGrab():
 
     @staticmethod
     def __extract(frame, location):
-        '''Upscale coords in face_location by 4 and extract from frame'''
+        '''Upscale coordinates in face_location by 4 and extract face'''
         top, right, bottom, left = location
         return frame[top * 4:bottom * 4, left * 4:right * 4] # I mean it is awesome
 
@@ -68,11 +68,10 @@ class FaceGrab():
         return "%d%s" % (number,
                          "tsnrhtdd"[(number / 10 % 10 != 1) * (number % 10 < 4) * number % 10::4])
 
-
-
     def __recognise(self, encoding):
         '''Checks the unknown_encoding exits and compares against the known encoding(s).
-        If no encodings at all are present then all faces are recognized.'''
+        With the current tolerance settings.
+        If no encodings at all are present then all faces are classed as recognized.'''
         if not self._has_encodings:
             return True
         if numpy.any(encoding):
@@ -85,15 +84,15 @@ class FaceGrab():
         '''Finds all faces in batch of frames using precomputed CNN model (in GPU)
         Then checks all the found faces against a set of known reference encodings.
         If there is a match it saves the found face to the output directory'''
+        # we use _process_frames to do the *opposite* of number_of_times_to_upsample
         location_sets = face_recognition.batch_face_locations(self._process_frames,
                                                               batch_size=self.batch_size)
         extracted = 0
-        with tqdm(total=len(location_sets)) as progress_batch:
+        with tqdm(total=len(location_sets)) as bar:
             for position, locations in enumerate(location_sets):
                 frame = frame_count - self.batch_size + position
-                progress_batch.update(1)
-                progress_batch.set_description('Batch #{} (recognized {})'.format(batch_count,
-                                                                                  extracted))
+                bar.update(1)
+                bar.set_description('Batch #{} (recognized {})'.format(batch_count, extracted))
                 for face_number, face_location in enumerate(locations):
                     face = self.__extract(self._orignal_frames[position], face_location)
                     if self.__recognise(face_recognition.face_encodings(face)):
@@ -104,35 +103,42 @@ class FaceGrab():
                                                                       position,
                                                                       face_number))
                         cv2.imwrite(output_path, face)
-                        # frame v.unlikely to contain desired face more than
-                        # once
+                        # frame v.unlikely to have target face more than once
                         break
 
-    def process(self, input_video, output_directory='.'):
-        '''Opens a video file and hands of batches off frames from it for processing'''
-        video_capture = cv2.VideoCapture(input_video)
-        if not video_capture.isOpened():
-            raise Exception('Could not open the video file {}'.format(input_video))
+    def ___open_input(self, input_path):
+        '''Opens a video file and returns'''
+        video = cv2.VideoCapture(input_path)
+        if not video.isOpened():
+            raise Exception('Could not open the video file {}'.format(input_path))
+        return video
+
+    def process(self, input_path, output_directory='.'):
+        '''Opens a input and hands of batches off images/frames for processing'''
+        # zero counters
+        self._total_extracted = 0
         frame_count = 0
         batch_count = 0
-        self._total_extracted = 0
-        total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        sequence = self.___open_input(input_path)
+        # statistics
+        total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
         total_batches = int(total_frames / self.skip_frames / self.batch_size)
-        refrence_count = len(self._reference_encodings)
-        print('Processing {}...'.format(input_video))
-        print('every {} frame of {} for {} batches'.format(self.__ordinalth(self.skip_frames),
+        total_refs = len(self._reference_encodings)
+        print('Processing {}...'.format(input_path))
+        print('every {} frame of {} for {} batches of {}'.format(self.__ordinalth(self.skip_frames),
                                                            total_frames,
-                                                           total_batches))
-        print('Checking detected against {} reference{}'.format(refrence_count,
-                                                                's' if refrence_count > 1 else ''))
-        with tqdm(total=total_frames) as progress_main:
-            while video_capture.isOpened():
-                ret, frame = video_capture.read()
+                                                           total_batches,
+                                                           self.batch_size))
+        print('Checking faces against {} reference{}'.format(total_refs,
+                                                             's' if total_refs > 1 else ''))
+        with tqdm(total=total_frames) as bar:
+            while sequence.isOpened():
+                ret, frame = sequence.read()
                 if not ret:
                     break
                 frame_count += 1
-                progress_main.update(1)
-                progress_main.set_description('Total (extracted {})'.format(self._total_extracted))
+                bar.update(1)
+                bar.set_description('Total (extracted {})'.format(self._total_extracted))
                 if self.skip_frames > 0 and frame_count % self.skip_frames:
                     continue
                 self._process_frames.append(self.__downsample(frame))
@@ -142,18 +148,19 @@ class FaceGrab():
                     self.__batch(batch_count, frame_count, output_directory)
                     self._process_frames = []
                     self._orignal_frames = []
-        progress_main.close()
+        bar.close()
         print('\nFound and grabbed {} faces'.format(self._total_extracted))
-   
+
 if __name__ == '__main__':
     # Just for example...
-    OUTPUT_DIR = r'.\output-files'
-    REF_DIR = r'.\reference-images'
-    TEST_VIDEO = r'.\input\video.mp4'
+    OUTPUT_DIR = r'.\output'
+    REF_DIR = r'.\reference\some-person'
+    TEST_VIDEO = r'.\video\hd-movie.avi'
     # reference can be a path to a single file (eg.  D:\images\someone.jpg)
     # or a path to an directory an images sequence (e.g.  D:\images)
     FG = FaceGrab(reference=REF_DIR, batch_size=50, skip_frames=25)
     # input_video can be a path to a single file (eg.  D:\video\foo.mp4)
     # or a path to an image sequence (e.g.  D:\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
-    FG.process(input_video=TEST_VIDEO, output_directory=OUTPUT_DIR)
+    FG.process(input_path=TEST_VIDEO, output_directory=OUTPUT_DIR)
+
