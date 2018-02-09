@@ -2,7 +2,7 @@
 Extract a known face from a video.
 
 This class uses a combination of a deep learning CNN model to batch detect faces
-in video frames, or a sequance of images in GPU with CUDA.
+in video frames, or a sequence of images in GPU with CUDA.
 It then uses HoG to compare the deteted faces with a pre existingreference set of face encodings.
 '''
 
