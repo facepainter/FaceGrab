@@ -11,4 +11,4 @@ known-face-images can be extracted from video file many hundreds of times faster
 frames spliting/extract/detect applications or methods that are CPU bound and only operate on individual images.
 
 NB: requires dlib 19.9.99+ compiled with CUDA (and preferably AVX)
-see  
+See: https://gist.github.com/facepainter/adfaabe25831a7c9300bafd1b886e1c8#file-dlib_avx_cuda-bat
