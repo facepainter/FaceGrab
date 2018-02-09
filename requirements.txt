@@ -1,0 +1,4 @@
+opencv-python==3.4.0.12
+face-recognition==1.2.1
+numpy==1.14.0
+tqdm==4.19.5
