@@ -1,4 +1,3 @@
-' YMMV here - I needed 64bit 2007 complier to get this to work...
 set COMPILER="C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64"
 set PATH=%COMPILER%;%PATH%
 git clone https://github.com/davisking/dlib.git
