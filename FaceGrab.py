@@ -2,7 +2,7 @@
 Extract a known face from a video.
 
 This class uses a combination of a deep learning CNN model to batch detect faces
-in video frames, or image sequence in GPU with CUDA. 
+in video frames, or a sequance of images in GPU with CUDA.
 It then uses HoG to compare the deteted faces with a pre existingreference set of face encodings.
 '''
 
@@ -144,17 +144,16 @@ class FaceGrab():
                     self._orignal_frames = []
         progress_main.close()
         print('\nFound and grabbed {} faces'.format(self._total_extracted))
-
+        
 if __name__ == '__main__':
     # Just for example...
-    # OUTPUT_DIR = r'.\output'
-    # REF_DIR = r'.\image'
-    # REF_IMG = r'.\image\ref.jpg'
-    # TEST_VIDEO = r'.\vid\test.mp4'
+    OUTPUT_DIR = r'.\output-files'
+    REF_DIR = r'.\reference-images'
+    TEST_VIDEO = r'.\input\video.mp4'
     # reference can be a path to a single file (eg.  D:\images\someone.jpg)
     # or a path to an directory an images sequence (e.g.  D:\images)
-    # FG = FaceGrab(reference=REF_DIR, batch_size=50)
+    FG = FaceGrab(reference=REF_DIR, batch_size=50, skip_frames=25)
     # input_video can be a path to a single file (eg.  D:\video\foo.mp4)
     # or a path to an image sequence (e.g.  D:\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
-    # FG.process(input_video=TEST_VIDEO, output_directory=OUTPUT_DIR)
+    FG.process(input_video=TEST_VIDEO, output_directory=OUTPUT_DIR)
