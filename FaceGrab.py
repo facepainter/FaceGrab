@@ -68,8 +68,6 @@ class FaceGrab():
         return "%d%s" % (number,
                          "tsnrhtdd"[(number / 10 % 10 != 1) * (number % 10 < 4) * number % 10::4])
 
-
-
     def __recognise(self, encoding):
         '''Checks the unknown_encoding exits and compares against the known encoding(s).
         If no encodings at all are present then all faces are recognised.'''
