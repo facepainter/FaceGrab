@@ -34,7 +34,7 @@ class FaceGrab():
         if not self._has_encodings:
             print('Warning: no references have been detected')
             print('Are you sure the reference path is correct? {}'.format(reference))
-            print('If you process a video *all* matching faces will be extracted')
+            print('If you process a video *all* detected faces will be extracted')
 
     def __parse_encoding(self, image_path):
         image = face_recognition.load_image_file(image_path)
