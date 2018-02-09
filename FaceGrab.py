@@ -120,14 +120,14 @@ class FaceGrab():
 
 if __name__ == '__main__':
     # Just for example...
-    OUTPUT_DIR = r'.\output'
-    REF_DIR = r'.\input\reference'
-    REF_IMG = r'.\input\ref.jpg'
-    TEST_VIDEO = r'.\input\vid.mp4'
+    # OUTPUT_DIR = r'.\output'
+    # REF_DIR = r'.\input\reference'
+    # REF_IMG = r'.\input\ref.jpg'
+    # TEST_VIDEO = r'.\input\vid.mp4'
     # reference can be a path to a single file (e.g. .\images\me.jpg)
     # or a path to an directory containing multiple images sequence (e.g. .\images)
-    FG = FaceGrab(reference=REF_DIR)
+    # FG = FaceGrab(reference=REF_DIR)
     # input_video can be a path to a single file (eg.  D:\video\foo.mp4)
     # or a path to an image sequence (e.g.  D:\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
-    FG.process(input_video=TEST_VIDEO, output_directory=OUTPUT_DIR)
+    # FG.process(input_video=TEST_VIDEO, output_directory=OUTPUT_DIR)
