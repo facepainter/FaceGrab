@@ -12,12 +12,10 @@ at at time can be achieved (VRAM dependant). This combined with other speed/opti
 known-face-images can be extracted from video file many hundreds of times faster than using seperate
 frames spliting/extract/detect applications or methods that are CPU bound and only operate on individual images.
 
-NB: requires dlib 19.9.99+ compiled with CUDA (and preferably AVX)
-See: https://gist.github.com/facepainter/adfaabe25831a7c9300bafd1b886e1c8#file-dlib_avx_cuda-bat
 
 **Requires:**
 
-CUDA 8.0 - https://developer.nvidia.com/cuda-80-ga2-download-archive
-cudnn 6 for cuda 8 - https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v6/prod/8.0_20170427/cudnn-8.0-windows10-x64-v6.0-zip (login required)
-dlib - https://github.com/davisking/dlib.git
-Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
+- CUDA 8.0 - https://developer.nvidia.com/cuda-80-ga2-download-archive
+- cudnn 6 for cuda 8 - https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v6/prod/8.0_20170427/cudnn-8.0-windows10-x64-v6.0-zip (login required)
+- dlib - https://github.com/davisking/dlib.git compiled with CUDA (and preferably AVX) see notes.
+- Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
