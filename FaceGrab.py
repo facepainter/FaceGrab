@@ -108,7 +108,7 @@ class FaceGrab():
                     break
                 frame_count += 1
                 progress_main.update(1)
-                if self.skip_frames > 0 and not frame_count % self.skip_frames:
+                if self.skip_frames > 0 and frame_count % self.skip_frames:
                     continue
                 self.process_frames.append(self.__downsample(frame))
                 self.orignal_frames.append(frame)
