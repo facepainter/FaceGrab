@@ -3,7 +3,7 @@ Extract a known face from a video.
 
 This class uses a combination of a deep learning CNN model to batch detect faces
 in video frames, or a sequence of images in GPU with CUDA.
-It then uses HoG to compare the deteted faces with a pre existingreference set of face encodings.
+It then uses HoG to compare the detected faces with a computed reference set of face encodings.
 '''
 
 from os import path, listdir
@@ -59,7 +59,7 @@ class FaceGrab():
     def __extract(frame, location):
         '''Upscale coords in face_location by 4 and extract from frame'''
         top, right, bottom, left = location
-        return frame[top * 4:bottom * 4, left * 4:right * 4] # I mean it is awsome
+        return frame[top * 4:bottom * 4, left * 4:right * 4] # I mean it is awesome
 
     @staticmethod
     def __ordinalth(number):
@@ -68,9 +68,11 @@ class FaceGrab():
         return "%d%s" % (number,
                          "tsnrhtdd"[(number / 10 % 10 != 1) * (number % 10 < 4) * number % 10::4])
 
+
+
     def __recognise(self, encoding):
         '''Checks the unknown_encoding exits and compares against the known encoding(s).
-        If no encodings at all are present then all faces are recognised.'''
+        If no encodings at all are present then all faces are recognized.'''
         if not self._has_encodings:
             return True
         if numpy.any(encoding):
@@ -90,7 +92,7 @@ class FaceGrab():
             for position, locations in enumerate(location_sets):
                 frame = frame_count - self.batch_size + position
                 progress_batch.update(1)
-                progress_batch.set_description('Batch #{} (recognised {})'.format(batch_count,
+                progress_batch.set_description('Batch #{} (recognized {})'.format(batch_count,
                                                                                   extracted))
                 for face_number, face_location in enumerate(locations):
                     face = self.__extract(self._orignal_frames[position], face_location)
@@ -142,7 +144,7 @@ class FaceGrab():
                     self._orignal_frames = []
         progress_main.close()
         print('\nFound and grabbed {} faces'.format(self._total_extracted))
-        
+   
 if __name__ == '__main__':
     # Just for example...
     OUTPUT_DIR = r'.\output-files'
