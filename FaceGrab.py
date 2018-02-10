@@ -95,6 +95,7 @@ class FaceGrab():
                                                 '{}-{}-{}.jpg'.format(frame,
                                                                       position,
                                                                       face_number))
+                        face = cv2.resize(face, (256, 256))
                         cv2.imwrite(output_path, face)
                         # frame v.unlikely to have target face more than once
                         break
