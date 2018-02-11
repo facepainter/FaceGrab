@@ -74,7 +74,7 @@ class FaceGrab():
 
     def __recognise(self, face):
         '''Checks a face against any known reference encodings.
-        If no reference encodings are present *all* faces are classed as recognized.'''
+        If no reference encodings are present *all* faces are classed as recognised.'''
         if not self.has_references:
             return True
         encoding = face_recognition.face_encodings(face)
@@ -89,7 +89,7 @@ class FaceGrab():
         self._orignal_frames = []
 
     def __do_batch(self, batch_count, frame_count, output_path, scale):
-        '''Detects face in batch of frames and tests to see if each face is recognized.
+        '''Detects face in batch of frames and tests to see if each face is recognised.
         If a face is recognised it is saved as an image to the output path'''
         batch = face_recognition.batch_face_locations(self._process_frames, 1, self.batch_size)
         with tqdm(total=len(batch)) as progress:
@@ -136,14 +136,14 @@ class FaceGrab():
 
     def process(self, input_path, output_path='.', down_sample=0.25):
         '''Opens a input and hands of batches off images/frames for processing'''
-        down_sample = numpy.clip(down_sample, 0, 1.0)
+        scale = numpy.clip(down_sample, 0, 1.0)
         self._total_extracted = 0
         sequence = cv2.VideoCapture(input_path)
         total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
         total_work = int(total_frames / self.skip_frames)
         total_batches = int(total_work / self.batch_size)
         total_refs = len(self._reference_encodings)
-        print('Opening {}'.format(input_path))
+        print('Processing {} at {} scale'.format(input_path, scale))
         print('Using {} reference{} with {} tolerance'.format(total_refs,
                                                               's' if total_refs > 1 else '',
                                                               self.tolernace))
@@ -151,7 +151,7 @@ class FaceGrab():
                                                                     total_frames,
                                                                     total_batches,
                                                                     self.batch_size))
-        self.__batch_builder(output_path, sequence, total_frames, down_sample)
+        self.__batch_builder(output_path, sequence, total_frames, scale)
         sequence.release()
 
 if __name__ == '__main__':
