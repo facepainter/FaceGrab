@@ -2,7 +2,7 @@
 Extract a known face from a video.
 
 This class uses a combination of a deep learning CNN model to batch detect faces
-in video frames, or a sequence of images in GPU with CUDA.
+in video frames, or a sequence of images, in GPU with CUDA.
 It then uses HoG to compare the detected faces with a computed reference set of face encodings.
 '''
 
@@ -14,109 +14,109 @@ import numpy
 import face_recognition
 
 class FaceGrab():
-    '''Holds common settings for the reference encodings and processing parameters.
+    '''Common settings for reference encodings and processing parameters.
     so that multiple videos can be processed against them'''
-    def __init__(self, reference, batch_size=128, skip_frames=1, tolerance=.5):
+    def __init__(self,
+                 reference,
+                 batch_size=128,
+                 skip_frames=5,
+                 tolerance=0.5,
+                 extract_size=256):
         self.batch_size = numpy.clip(batch_size, 2, 128)
         self.skip_frames = 0 if skip_frames < 0 else skip_frames + 1
-        self.tolernace = numpy.clip(tolerance, .1, 1)
+        self.tolernace = numpy.clip(tolerance, 0.1, 1)
+        self.extract_size = extract_size
         self._process_frames = []
         self._orignal_frames = []
         self._reference_encodings = []
         self._total_extracted = 0
-        # reference could be a single image or a directory of images
-        # in either case we need the encoding data from the image(s)
+        self.__check_reference(reference)
+
+    @property
+    def has_references(self):
+        '''True if any reference encodings are present, otherwise False'''
+        return numpy.any(self._reference_encodings)
+
+    @staticmethod
+    def __downsample(frame, scale):
+        '''Downscale frame of video for faster detection processing.
+        also converts cv2's BGR to face_recognition's RGB'''
+        small_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+        small_frame = small_frame[:, :, ::-1] # BGR->RGB
+        return small_frame
+
+    @staticmethod
+    def __extract(frame, location, scale):
+        '''Upscale coordinates and extract face'''
+        factor = int(1 / scale)
+        top, right, bottom, left = location
+        return frame[top * factor:bottom * factor, left * factor:right * factor]
+
+    def __check_reference(self, reference):
+        '''Checks the type of reference and looks for encodings'''
         if path.isdir(reference):
             for file in listdir(reference):
                 self.__parse_encoding(path.join(reference, file))
         elif path.isfile(reference):
             self.__parse_encoding(reference)
-        if not self._has_encodings:
+        if not self.has_references:
             print('Warning: no references have been detected')
-            print('Are you sure the reference path is correct? {}'.format(reference))
+            print('Are you sure the reference is correct? {}'.format(reference))
             print('If you process a video *all* detected faces will be extracted')
 
     def __parse_encoding(self, image_path):
+        '''Adds the first face encoding in an image to the known encodings'''
         image = face_recognition.load_image_file(image_path)
         encoding = face_recognition.face_encodings(image)
         if numpy.any(encoding):
             self._reference_encodings.append(encoding[0])
             print('Found ref #{} in {}'.format(len(self._reference_encodings), image_path))
 
-    @property
-    def _has_encodings(self):
-        return numpy.any(self._reference_encodings)
-
-    @staticmethod
-    def __downsample(frame):
-        '''Downscale frame of video by 4 for faster recognition processing.
-        also converts cv2's BGR to face_recognition's RGB'''
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        small_frame = small_frame[:, :, ::-1] # BGR->RGB for detect (fuck I love numpy)
-        return small_frame
-
-    @staticmethod
-    def __extract(frame, location):
-        '''Upscale coordinates in face_location by 4 and extract face'''
-        top, right, bottom, left = location
-        return frame[top * 4:bottom * 4, left * 4:right * 4] # I mean it is awesome
-
-    def __recognise(self, encoding):
-        '''Checks the unknown_encoding exits and compares against the known encoding(s).
-        With the current tolerance settings.
-        If no encodings at all are present then all faces are classed as recognized.'''
-        if not self._has_encodings:
+    def __recognise(self, face):
+        '''Checks a face against any known reference encodings.
+        If no reference encodings are present *all* faces are classed as recognized.'''
+        if not self.has_references:
             return True
+        encoding = face_recognition.face_encodings(face)
         if numpy.any(encoding):
             return numpy.any(face_recognition.compare_faces(self._reference_encodings,
                                                             encoding[0],
                                                             self.tolernace))
         return False
 
-    def __batch(self, batch_count, frame_count, output_directory):
-        '''Finds all faces in batch of frames using precomputed CNN model (in GPU)
-        Then checks all the found faces against a set of known reference encodings.
-        If there is a match it saves the found face to the output directory'''
-        # we use _process_frames to do the *opposite* of number_of_times_to_upsample
-        location_sets = face_recognition.batch_face_locations(self._process_frames,
-                                                              batch_size=self.batch_size)
-        extracted = 0
-        with tqdm(total=len(location_sets)) as progress:
-            for position, locations in enumerate(location_sets):
+    def __reset_frames(self):
+        self._process_frames = []
+        self._orignal_frames = []
+
+    def __do_batch(self, batch_count, frame_count, output_path, scale):
+        '''Detects face in batch of frames and tests to see if each face is recognized.
+        If a face is recognised it is saved as an image to the output path'''
+        batch = face_recognition.batch_face_locations(self._process_frames, 1, self.batch_size)
+        with tqdm(total=len(batch)) as progress:
+            extracted = 0
+            for position, found in enumerate(batch):
                 frame = frame_count - self.batch_size + position
                 progress.update(1)
-                progress.set_description('Batch #{} (recognized {})'.format(batch_count, extracted))
-                for face_number, face_location in enumerate(locations):
-                    face = self.__extract(self._orignal_frames[position], face_location)
-                    if self.__recognise(face_recognition.face_encodings(face)):
+                progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
+                for count, location in enumerate(found):
+                    face = self.__extract(self._orignal_frames[position], location, scale)
+                    if self.__recognise(face):
                         extracted += 1
                         self._total_extracted += 1
-                        output_path = path.join(output_directory,
-                                                '{}-{}-{}.jpg'.format(frame,
-                                                                      position,
-                                                                      face_number))
-                        face = cv2.resize(face, (256, 256))
-                        cv2.imwrite(output_path, face)
+                        out = path.join(output_path, '{}-{}-{}.jpg'.format(frame, position, count))
+                        cv2.imwrite(out, cv2.resize(face, (self.extract_size, self.extract_size)))
                         # frame v.unlikely to have target face more than once
-                        break
+                        # however this only holds if we have a reference
+                        if self.has_references:
+                            break
 
-    def process(self, input_path, output_directory='.'):
-        '''Opens a input and hands of batches off images/frames for processing'''
-        self._total_extracted = 0
+    def __skip_frame(self, number):
+        '''We want every nth frame if skipping'''
+        return self.skip_frames > 0 and number % self.skip_frames
+
+    def __batch_builder(self, output_path, sequence, total_frames, scale):
         frame_count = 0
         batch_count = 0
-        sequence = cv2.VideoCapture(input_path)
-        total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
-        total_to_process = int(total_frames/self.skip_frames)
-        total_batches = int(total_frames / self.skip_frames / self.batch_size)
-        total_refs = len(self._reference_encodings)
-        print('Opening {}'.format(input_path))
-        print('Checking faces against {} reference{}'.format(total_refs,
-                                                             's' if total_refs > 1 else ''))
-        print('Processing {}/{} frames. {} batches of {}'.format(total_to_process,
-                                                                 total_frames,
-                                                                 total_batches,
-                                                                 self.batch_size))
         with tqdm(total=total_frames) as progress:
             while sequence.isOpened():
                 ret, frame = sequence.read()
@@ -125,27 +125,43 @@ class FaceGrab():
                 frame_count += 1
                 progress.update(1)
                 progress.set_description('Total (extracted {})'.format(self._total_extracted))
-                if self.skip_frames > 0 and frame_count % self.skip_frames:
+                if self.__skip_frame(frame_count):
                     continue
-                self._process_frames.append(self.__downsample(frame))
+                self._process_frames.append(self.__downsample(frame, scale))
                 self._orignal_frames.append(frame)
                 if len(self._process_frames) == self.batch_size:
                     batch_count += 1
-                    self.__batch(batch_count, frame_count, output_directory)
-                    self._process_frames = []
-                    self._orignal_frames = []
-        progress.close()
-        print('\nFound and grabbed {} faces'.format(self._total_extracted))
+                    self.__do_batch(batch_count, frame_count, output_path, scale)
+                    self.__reset_frames()
+
+    def process(self, input_path, output_path='.', down_sample=0.25):
+        '''Opens a input and hands of batches off images/frames for processing'''
+        down_sample = numpy.clip(down_sample, 0, 1.0)
+        self._total_extracted = 0
+        sequence = cv2.VideoCapture(input_path)
+        total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
+        total_work = int(total_frames / self.skip_frames)
+        total_batches = int(total_work / self.batch_size)
+        total_refs = len(self._reference_encodings)
+        print('Opening {}'.format(input_path))
+        print('Using {} reference{} with {} tolerance'.format(total_refs,
+                                                              's' if total_refs > 1 else '',
+                                                              self.tolernace))
+        print('Checking {} of {} frames in {} batches of {}'.format(total_work,
+                                                                    total_frames,
+                                                                    total_batches,
+                                                                    self.batch_size))
+        self.__batch_builder(output_path, sequence, total_frames, down_sample)
+        sequence.release()
 
 if __name__ == '__main__':
-    # Just for example...
-    OUTPUT_DIR = r'.\output'
-    REF_DIR = r'D:\ref'
-    TEST_VIDEO = TEST_VIDEO = r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi'
-    # reference can be a path to a single file (e.g.  D:\images\someone.jpg)
-    # or a path to an directory an images sequence (e.g.  D:\images)
-    FG = FaceGrab(reference=REF_DIR, batch_size=128, skip_frames=12)
-    # input_video can be a path to a single file (e.g.  D:\video\foo.mp4)
-    # or a path to an image sequence (e.g.  D:\frames\img_%04d.jpg)
+    # data to reference can be a path to a single file (e.g.
+    # .\images\someone.jpg)
+    # or a path to a directory of images to use as references (e.g.  .\images)
+    FG = FaceGrab(r'D:\ref')
+    # data to process can be a path to a single file (e.g.  .\video\foo.mp4)
+    # or a path to an image sequence (e.g.  .\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
-    FG.process(input_path=TEST_VIDEO, output_directory=OUTPUT_DIR)
+    if FG.has_references:
+        FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
+                   output_path=r'D:\out')
