@@ -18,12 +18,19 @@ If run out of memory
 1. Reduce the **batch_size**  - the whole thing will take longer
 2. Decrease the process **scale**  e.g. 0.125 (1/8) - you may well get fewer face detections
 
-If you are getting too few matches you have a number of options.
+If you are getting too many false positives 
 
-1. Use a greater number/range of **reference** images (ideally ones that look like the person in the input!) 
+1. Use a more varied, more representative, range of **reference**  images
 2. Increase the **reference_jitter** so that each recognition is done using a higher number of resamples
-3. Decrease the **skip_frames** amount so that more of the input is processed (this might result in very similar extracted images)
-4. Increase the process **scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
+3. Decrease the **tolerance** so that each recognition is stricter e.g. 0.4
+
+If you are getting too few matches
+
+1. Use a greater number/range of **reference** images (ideally ones that look like the person in the input)
+2. Increase the **tolerance** so that each recognition is less strict e.g. 0.8
+3. Decrease the **reference_jitter** so that each recognition is done fewer resamples (less accurate) 
+4. Decrease the **skip_frames** amount so that more of the input is processed (this might result in very similar extracted images)
+5. Increase the process **scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
 ### Memory  
 
@@ -37,4 +44,4 @@ Very roughly speaking batch_size * frame dimensions * process scale = VRAM neede
 - dlib - https://github.com/davisking/dlib.git compiled with CUDA (and preferably AVX) see notes.
 - Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
 
-YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to bulid with CUDA support against v 9/9.1 :(
+YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 :(
