@@ -3,8 +3,7 @@
 Extract a known face from a video or image sequence.
 
 Uses a combination of a (precomputed) deep learning CNN model to quickly batch detect faces
-in video frames (upto 128 at a time in GPU with CUDA) then HoG face recognition with a computed
-reference face encoding or set of encodings.
+in video frames then HoG face recognition with a computed reference face encoding or set of encodings.
 
 Using the GPU with CUDA in this way means batch processing face detection in up to 128 frames
 at at time can be achieved (VRAM dependant). This combined with other speed/optimisation techniques
