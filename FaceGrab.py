@@ -14,13 +14,26 @@ import numpy
 import face_recognition
 
 class FaceGrab():
-    '''Common settings for reference encodings and processing parameters.
-    so that multiple videos can be processed against them'''
+    r'''
+    Common settings for reference encodings and processing parameters.
+    so that multiple videos can be processed against them.
+
+    :param str reference: can be a path to a single file e.g. .\images\someone.jpg
+                or a path to a directory of images e.g. .\images
+    :param int batch_size: How many images to include in each GPU processing batch.
+    :param int skip_frames: How many frame to skip e.g. 5 means look at every 6th
+    :param float tolerance: How much distance between faces to consider it a match.
+                Lower is more strict. 0.6 is typical best performance.
+    :param int extract_size: Size in pixels of extracted face images (NxN)
+    :param int reference_jitter: How many times to re-sample a face when
+                       calculating encoding. Higher is more accurate,
+                       but slower (i.e. 100 is 100x slower)
+    '''
     def __init__(self,
                  reference,
                  batch_size=128,
                  skip_frames=5,
-                 tolerance=0.5,
+                 tolerance=0.6,
                  extract_size=256,
                  reference_jitter=100):
         self.batch_size = numpy.clip(batch_size, 2, 128)
@@ -36,6 +49,7 @@ class FaceGrab():
 
     @property
     def has_references(self):
+        '''True if any encodings are currently loaded'''
         return numpy.any(self._reference_encodings)
 
     @staticmethod
@@ -136,7 +150,16 @@ class FaceGrab():
                     self.__reset_frames()
 
     def process(self, input_path, output_path='.', scale=0.25):
-        '''Opens a input and hands of batches off images/frames for processing'''
+        r'''
+        Extracts images from the input to the output.
+
+        :param str input_path: path to a single file e.g. .\video\foo.mp4
+                     or a path to an image sequence e.g. .\frames\img_%04d.jpg
+                     (read like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
+        :param str output_path: path to output directory
+        :param float scale: Amount to down-sampled input by for detection processing
+                            if you get too few matches try scaling by half e.g. .5
+        '''
         scale = numpy.clip(scale, 0, 1.0)
         self._total_extracted = 0
         sequence = cv2.VideoCapture(input_path)
@@ -157,25 +180,16 @@ class FaceGrab():
         sequence.release()
 
 if __name__ == '__main__':
-    # data to reference can be a path to a single file (e.g.
-    # .\images\someone.jpg)
-    # or a path to a directory of images to use as references (e.g.  .\images)
+    # NB: If run out of memory either reduce the batch_size
+    # roughly speaking
+    # batch_size * frame dimensions * process scale = VRAM needed
     FG = FaceGrab(reference=r'D:\ref',
                   batch_size=128,
                   skip_frames=12,
                   tolerance=.6,
                   extract_size=256,
                   reference_jitter=50)
-    # data to process can be a path to a single file (e.g.  .\video\foo.mp4)
-    # or a path to an image sequence (e.g.  .\frames\img_%04d.jpg)
-    # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
-    # scale is the factor the input is down-sampled by for detection,
-    # if you get too few matches, try scaling by half rather than a quarter
-    # e.g. .5 vs .25
-    # NB: If you do this and run out of memory, or OOM to begin with, reduce
-    # the batch size in the constructor.
-    # roughly speaking; batch size * video dimensions * scale = memory needed
     if FG.has_references:
         FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
-                    output_path=r'D:\out',
-                    scale=.25)
+                   output_path=r'D:\out',
+                   scale=.25)
