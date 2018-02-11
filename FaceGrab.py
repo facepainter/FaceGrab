@@ -18,16 +18,15 @@ class FaceGrab():
     Common settings for reference encodings and processing parameters.
     so that multiple videos can be processed against them.
 
-    :param str reference: can be a path to a single file e.g. .\images\someone.jpg
-                or a path to a directory of images e.g. .\images
+    :param str reference: Path to a single file e.g. .\images\someone.jpg
+                          or a path to a directory of images e.g. .\images
     :param int batch_size: How many images to include in each GPU processing batch.
     :param int skip_frames: How many frame to skip e.g. 5 means look at every 6th
     :param float tolerance: How much distance between faces to consider it a match.
-                Lower is more strict. 0.6 is typical best performance.
-    :param int extract_size: Size in pixels of extracted face images (NxN)
-    :param int reference_jitter: How many times to re-sample a face when
-                       calculating encoding. Higher is more accurate,
-                       but slower (i.e. 100 is 100x slower)
+                            Lower is more strict. 0.6 is typical best performance.
+    :param int extract_size: Size in pixels of extracted face images (NxN).
+    :param int reference_jitter: How many times to re-sample when calculating encoding.
+                                 Higher is more accurate, but slower.
     '''
     def __init__(self,
                  reference,
@@ -154,8 +153,8 @@ class FaceGrab():
         Extracts images from the input to the output.
 
         :param str input_path: path to a single file e.g. .\video\foo.mp4
-                     or a path to an image sequence e.g. .\frames\img_%04d.jpg
-                     (read like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
+                               or a path to an image sequence e.g. .\frames\img_%04d.jpg
+                               (read like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
         :param str output_path: path to output directory
         :param float scale: Amount to down-sampled input by for detection processing
                             if you get too few matches try scaling by half e.g. .5
