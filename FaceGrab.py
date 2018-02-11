@@ -34,7 +34,6 @@ class FaceGrab():
 
     @property
     def has_references(self):
-        '''True if any reference encodings are present, otherwise False'''
         return numpy.any(self._reference_encodings)
 
     @staticmethod
