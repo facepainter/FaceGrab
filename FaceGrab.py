@@ -19,7 +19,9 @@ class FaceGrab():
     so that multiple videos can be processed against them.
 
     :param str reference: Path to a single file e.g. .\images\someone.jpg
-                          or a path to a directory of images e.g. .\images
+                          or a path to a directory of images e.g. .\images.
+                          (You can also pass an empty directory if you wish to 
+                          match all faces).
     :param int batch_size: How many images to include in each GPU processing batch.
     :param int skip_frames: How many frame to skip e.g. 5 means look at every 6th
     :param float tolerance: How much distance between faces to consider it a match.
@@ -120,7 +122,7 @@ class FaceGrab():
                         out = path.join(output_path, '{}-{}-{}.jpg'.format(frame, position, count))
                         cv2.imwrite(out, cv2.resize(face, (self.extract_size, self.extract_size)))
                         # frame v.unlikely to have target face more than once
-                        # however this only holds if we have a reference
+                        # however this only holds true if we have a reference
                         if self.has_references:
                             break
 
@@ -150,14 +152,14 @@ class FaceGrab():
 
     def process(self, input_path, output_path='.', scale=0.25):
         r'''
-        Extracts images from the input to the output.
+        Extracts known faces from the input source to the output.
 
-        :param str input_path: path to a single file e.g. .\video\foo.mp4
-                               or a path to an image sequence e.g. .\frames\img_%04d.jpg
+        :param str input_path: Path to a single file e.g. .\video\foo.mp4
+                               Or a path to an image sequence e.g. .\frames\img_%04d.jpg
                                (read like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
         :param str output_path: path to output directory
-        :param float scale: Amount to down-sampled input by for detection processing
-                            if you get too few matches try scaling by half e.g. .5
+        :param float scale: Amount to down-sample input by for detection processing.
+                            If you get too few matches try scaling by half e.g. .5
         '''
         scale = numpy.clip(scale, 0, 1.0)
         self._total_extracted = 0
