@@ -21,11 +21,13 @@ class FaceGrab():
                  batch_size=128,
                  skip_frames=5,
                  tolerance=0.5,
-                 extract_size=256):
+                 extract_size=256,
+                 reference_jitter=100):
         self.batch_size = numpy.clip(batch_size, 2, 128)
         self.skip_frames = 0 if skip_frames < 0 else skip_frames + 1
         self.tolernace = numpy.clip(tolerance, 0.1, 1)
         self.extract_size = extract_size
+        self.reference_jitter = reference_jitter
         self._process_frames = []
         self._orignal_frames = []
         self._reference_encodings = []
@@ -66,7 +68,7 @@ class FaceGrab():
     def __parse_encoding(self, image_path):
         '''Adds the first face encoding in an image to the known encodings'''
         image = face_recognition.load_image_file(image_path)
-        encoding = face_recognition.face_encodings(image)
+        encoding = face_recognition.face_encodings(image, None, self.reference_jitter)
         if numpy.any(encoding):
             self._reference_encodings.append(encoding[0])
             print('Found ref #{} in {}'.format(len(self._reference_encodings), image_path))
@@ -143,9 +145,10 @@ class FaceGrab():
         total_batches = int(total_work / self.batch_size)
         total_refs = len(self._reference_encodings)
         print('Processing {} at {} scale'.format(input_path, scale))
-        print('Using {} reference{} with {} tolerance'.format(total_refs,
-                                                              's' if total_refs > 1 else '',
-                                                              self.tolernace))
+        print('Using {} reference{} ({} jitter {} tolerance)'.format(total_refs,
+                                                                     's' if total_refs > 1 else '',
+                                                                     self.reference_jitter,
+                                                                     self.tolernace))
         print('Checking {} of {} frames in {} batches of {}'.format(total_work,
                                                                     total_frames,
                                                                     total_batches,
@@ -161,16 +164,20 @@ if __name__ == '__main__':
                   batch_size=128,
                   skip_frames=12,
                   tolerance=.6,
-                  extract_size=256)
+                  extract_size=256,
+                  reference_jitter=50)
     # data to process can be a path to a single file (e.g.  .\video\foo.mp4)
     # or a path to an image sequence (e.g.  .\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
     # scale is the factor the input is down-sampled by for detection,
-    # if you get too few matches, try scaling by half rather than a quarter e.g. .5 vs .25
-    # NB: If you do this and run out of memory, or OOM to begin with, reduce the batch size
+    # if you get too few matches, try scaling by half rather than a quarter
+    # e.g.  .5 vs .25
+    # NB: If you do this and run out of memory, or OOM to begin with, reduce
+    # the batch size
     # in the constructor.
-    # Very roughly speaking; batch size * video dimensions * scale = memory needed
+    # Very roughly speaking; batch size * video dimensions * scale = memory
+    # needed
     if FG.has_references:
         FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
-                   output_path=r'D:\out',
-                   scale=.25)
+                    output_path=r'D:\out',
+                    scale=.25)
