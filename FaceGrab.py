@@ -134,9 +134,9 @@ class FaceGrab():
                     self.__do_batch(batch_count, frame_count, output_path, scale)
                     self.__reset_frames()
 
-    def process(self, input_path, output_path='.', down_sample=0.25):
+    def process(self, input_path, output_path='.', scale=0.25):
         '''Opens a input and hands of batches off images/frames for processing'''
-        scale = numpy.clip(down_sample, 0, 1.0)
+        scale = numpy.clip(scale, 0, 1.0)
         self._total_extracted = 0
         sequence = cv2.VideoCapture(input_path)
         total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -158,10 +158,20 @@ if __name__ == '__main__':
     # data to reference can be a path to a single file (e.g.
     # .\images\someone.jpg)
     # or a path to a directory of images to use as references (e.g.  .\images)
-    FG = FaceGrab(r'D:\ref')
+    FG = FaceGrab(reference=r'D:\ref',
+                  batch_size=128,
+                  skip_frames=12,
+                  tolerance=.6,
+                  extract_size=256)
     # data to process can be a path to a single file (e.g.  .\video\foo.mp4)
     # or a path to an image sequence (e.g.  .\frames\img_%04d.jpg)
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
+    # scale is the factor the input is down-sampled by for detection,
+    # if you get too few matches, try scaling by half rather than a quarter e.g. .5 vs .25
+    # NB: If you do this and run out of memory, or OOM to begin with, reduce the batch size
+    # in the constructor.
+    # Very roughly speaking; batch size * video dimensions * scale = memory needed
     if FG.has_references:
         FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
-                   output_path=r'D:\out')
+                   output_path=r'D:\out',
+                   scale=.25)
