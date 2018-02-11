@@ -184,13 +184,7 @@ if __name__ == '__main__':
     # NB: If run out of memory try reducing the batch_size
     # Roughly speaking:
     # batch_size * frame dimensions * process scale = VRAM needed
-    FG = FaceGrab(reference=r'D:\ref',
-                  batch_size=128,
-                  skip_frames=12,
-                  tolerance=.6,
-                  extract_size=256,
-                  reference_jitter=50)
+    FG = FaceGrab(reference=r'D:\ref')
     if FG.has_references:
         FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
-                   output_path=r'D:\out',
-                   scale=.25)
+                   output_path=r'D:\out')
