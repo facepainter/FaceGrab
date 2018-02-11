@@ -179,8 +179,8 @@ class FaceGrab():
         sequence.release()
 
 if __name__ == '__main__':
-    # NB: If run out of memory either reduce the batch_size
-    # roughly speaking
+    # NB: If run out of memory try reducing the batch_size
+    # Roughly speaking:
     # batch_size * frame dimensions * process scale = VRAM needed
     FG = FaceGrab(reference=r'D:\ref',
                   batch_size=128,
