@@ -13,6 +13,13 @@ frame splitting/extraction/detection applications, or by methods that are CPU bo
 
 ## Usage
 
+```python
+FG = FaceGrab(reference=r'./images/nick-cage-reference')
+if FG.has_references:
+    FG.process(input_path=r'./movies/The Wicker Man.mp4',
+               output_path=r'./extracted/nick-cage-wicker-man')
+```
+
 If run out of memory
 
 1. Reduce the **batch_size**  - the whole thing will take longer
