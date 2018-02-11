@@ -38,7 +38,7 @@ class FaceGrab():
                  skip_frames=5,
                  tolerance=0.6,
                  extract_size=256,
-                 reference_jitter=50):
+                 reference_jitter=5):
         self.batch_size = numpy.clip(batch_size, 2, 128)
         self.skip_frames = 0 if skip_frames < 0 else skip_frames + 1
         self.tolernace = numpy.clip(tolerance, 0.1, 1)
