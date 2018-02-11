@@ -171,12 +171,10 @@ if __name__ == '__main__':
     # which will read image like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
     # scale is the factor the input is down-sampled by for detection,
     # if you get too few matches, try scaling by half rather than a quarter
-    # e.g.  .5 vs .25
+    # e.g. .5 vs .25
     # NB: If you do this and run out of memory, or OOM to begin with, reduce
-    # the batch size
-    # in the constructor.
-    # Very roughly speaking; batch size * video dimensions * scale = memory
-    # needed
+    # the batch size in the constructor.
+    # roughly speaking; batch size * video dimensions * scale = memory needed
     if FG.has_references:
         FG.process(input_path=r'D:\Videos\Movies\Gladiator (2000)\Gladiator (2000).avi',
                     output_path=r'D:\out',
