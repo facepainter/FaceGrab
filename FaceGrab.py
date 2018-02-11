@@ -19,16 +19,18 @@ class FaceGrab():
     so that multiple videos can be processed against them.
 
     :param str reference: Path to a single file e.g. .\images\someone.jpg
-                          or a path to a directory of images e.g. .\images.
-                          (You can also pass an empty directory if you wish to 
+                          or a path to a directory of reference images e.g. .\images.
+                          (You can also pass an empty directory if you wish to
                           match all faces).
-    :param int batch_size: How many images to include in each GPU processing batch.
-    :param int skip_frames: How many frame to skip e.g. 5 means look at every 6th
-    :param float tolerance: How much distance between faces to consider it a match.
-                            Lower is more strict. 0.6 is typical best performance.
+    :param int batch_size: How many frames to include in each GPU processing batch.
+    :param int skip_frames: How many frames to skip e.g. 5 means look at every 6th
+    :param float tolerance: How much "distance" between faces to consider it a match.
+                            Lower is stricter. 0.6 is typical best performance.
     :param int extract_size: Size in pixels of extracted face images (NxN).
-    :param int reference_jitter: How many times to re-sample when calculating encoding.
+    :param int reference_jitter: How many times to re-sample images when
+                                 calculating recognition encodings.
                                  Higher is more accurate, but slower.
+                                 (100 is 100 times slower than 1)
     '''
     def __init__(self,
                  reference,
@@ -36,7 +38,7 @@ class FaceGrab():
                  skip_frames=5,
                  tolerance=0.6,
                  extract_size=256,
-                 reference_jitter=100):
+                 reference_jitter=50):
         self.batch_size = numpy.clip(batch_size, 2, 128)
         self.skip_frames = 0 if skip_frames < 0 else skip_frames + 1
         self.tolernace = numpy.clip(tolerance, 0.1, 1)
@@ -68,6 +70,10 @@ class FaceGrab():
         top, right, bottom, left = location
         return frame[top * factor:bottom * factor, left * factor:right * factor]
 
+    @staticmethod
+    def __format_name(output_path, frame, position, count):
+        return path.join(output_path, '{}-{}-{}.jpg'.format(frame, position, count))
+
     def __check_reference(self, reference):
         '''Checks the type of reference and looks for encodings'''
         if path.isdir(reference):
@@ -86,14 +92,14 @@ class FaceGrab():
         encoding = face_recognition.face_encodings(image, None, self.reference_jitter)
         if numpy.any(encoding):
             self._reference_encodings.append(encoding[0])
-            print('Found ref #{} in {}'.format(len(self._reference_encodings), image_path))
+            print('Reference #{} - {}'.format(len(self._reference_encodings), image_path))
 
     def __recognise(self, face):
-        '''Checks a face against any known reference encodings.
-        If no reference encodings are present *all* faces are classed as recognised.'''
+        '''Checks a given face against any known reference encodings.
+        If no reference encodings are present any face is classed as recognised.'''
         if not self.has_references:
             return True
-        encoding = face_recognition.face_encodings(face)
+        encoding = face_recognition.face_encodings(face, None, self.reference_jitter)
         if numpy.any(encoding):
             return numpy.any(face_recognition.compare_faces(self._reference_encodings,
                                                             encoding[0],
@@ -104,23 +110,38 @@ class FaceGrab():
         self._process_frames = []
         self._orignal_frames = []
 
-    def __do_batch(self, batch_count, frame_count, output_path, scale):
-        '''Detects face in batch of frames and tests to see if each face is recognised.
-        If a face is recognised it is saved as an image to the output path'''
+    def __get_locations(self, frame_count):
+        '''Get the batch face locations and frame number'''
         batch = face_recognition.batch_face_locations(self._process_frames, 1, self.batch_size)
-        with tqdm(total=len(batch)) as progress:
+        for index, locations in enumerate(batch):
+            frame_number = frame_count - self.batch_size + index
+            yield (index, locations, frame_number)
+
+    def __get_faces(self, face_locations, position, scale):
+        '''Get the faces from a set of locations (at given scale)'''
+        for index, location in enumerate(face_locations):
+            face = self.__extract(self._orignal_frames[position], location, scale)
+            yield (index, face)
+
+    def __save_extract(self, face, file_path):
+        '''Saves the face to file_path at the set extract size'''
+        image = cv2.resize(face, (self.extract_size, self.extract_size))
+        cv2.imwrite(file_path, image)
+
+    def __do_batch(self, batch_count, frame_count, output_path, scale):
+        '''Handles each batch of detected faces, performing recognition on each'''
+        #batch = face_recognition.batch_face_locations(self._process_frames, 1, self.batch_size)
+        with tqdm(total=self.batch_size) as progress:
             extracted = 0
-            for position, found in enumerate(batch):
-                frame = frame_count - self.batch_size + position
+            for location_index, locations, frame in self.__get_locations(frame_count):
                 progress.update(1)
                 progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
-                for count, location in enumerate(found):
-                    face = self.__extract(self._orignal_frames[position], location, scale)
+                for face_index, face in self.__get_faces(locations, location_index, scale):
                     if self.__recognise(face):
                         extracted += 1
                         self._total_extracted += 1
-                        out = path.join(output_path, '{}-{}-{}.jpg'.format(frame, position, count))
-                        cv2.imwrite(out, cv2.resize(face, (self.extract_size, self.extract_size)))
+                        name = self.__format_name(output_path, frame, location_index, face_index)
+                        self.__save_extract(face, name)
                         # frame v.unlikely to have target face more than once
                         # however this only holds true if we have a reference
                         if self.has_references:
@@ -131,6 +152,7 @@ class FaceGrab():
         return self.skip_frames > 0 and number % self.skip_frames
 
     def __batch_builder(self, output_path, sequence, total_frames, scale):
+        '''Splits the input fames in batches and keeps score'''
         frame_count = 0
         batch_count = 0
         with tqdm(total=total_frames) as progress:
