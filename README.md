@@ -98,7 +98,7 @@ personC.process('c.mp4', 'c')
 Also If you want to ensure you have recognition encodings before you begin...
 ```python
 FG = FaceGrab('./images/nick-cage-reference')
-if FG.has_references:
+if FG.reference_count:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
 ```
 ## Help!
