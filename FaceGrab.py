@@ -10,6 +10,7 @@ from os import path, listdir
 from typing import NamedTuple
 from tqdm import tqdm
 
+import argparse
 import cv2
 import numpy
 import face_recognition
@@ -18,11 +19,7 @@ class RecognitionSettings(NamedTuple):
     '''
     Face recognition settings
     :param float tolerance: How much "distance" between faces to consider it a match.
-                            Lower is stricter. 0.6 is typical best performance.
-    :param int jitter: How many times to re-sample images when
-                                    calculating recognition encodings.
-                                    Higher is more accurate, but slower.
-                                    (100 is 100 times slower than 1)
+    :param int jitter: How many times to re-sample images when calculating encodings.
     '''
     tolerance: float = .6
     jitter: int = 5
@@ -34,7 +31,6 @@ class ProcessSettings(NamedTuple):
     :param int skip_frames: How many frames to skip e.g. 5 means look at every 6th
     :param int extract_size: Size in pixels of extracted face images (n*n).
     :param float scale: Amount to down-sample input by for detection processing.
-                        If you get too few matches try scaling by half e.g. .5
     '''
     batch_size: int = 128
     skip_frames: int = 6
@@ -43,13 +39,8 @@ class ProcessSettings(NamedTuple):
 
 class FaceGrab():
     '''
-    Represents reference encodings of a known person and
-    common processing parameters so that multiple videos can be processed
-    against it.
-        :param str reference: Path to a single file e.g. ./images/someone.jpg
-                              or a path to a directory of reference images e.g. ./images.
-                              (You can also pass an empty directory if you wish to
-                              match all faces).
+    It sure grabs faces! (tm)
+        :param str reference: Path to a input data (video/image sequence)
         :param RecognitionSettings recognition: Face recognition settings
         :param ProcessSettings process: Video process settings
     '''
@@ -192,9 +183,7 @@ class FaceGrab():
     def process(self, input_path, output_path='.'):
         '''
         Extracts known faces from the input source to the output.
-            :param str input_path: Path to a single file e.g. ./video/foo.mp4
-                                   Or a path to an image sequence e.g. ./frames/img_%04d.jpg
-                                   (read like img_0000.jpg, img_0001.jpg, img_0002.jpg, ...)
+            :param str input_path: Path to video or image sequence pattern
             :param str output_path: path to output directory
         '''
         self._total_extracted = 0
@@ -215,3 +204,34 @@ class FaceGrab():
         self.__batch_builder(output_path, sequence, total_frames)
         sequence.release()
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Facetook (tm)')
+    # Required settings
+    parser.add_argument('-r', '--reference', type=str, required=True, help=r'''Path to a single file e.g. ./images/someone.jpg
+    or a path to a directory of reference images e.g. ./images.
+    (You can also pass an empty directory if you wish to match all faces).''')
+    parser.add_argument('-i', '--input', type=str, required=True, help=r'''Path to a single file e.g. ./video/foo.mp4
+    Or a path/pattern of an image sequence e.g. ./frames/img_%%04d.jpg
+    (read like ./frames/img_0000.jpg, ./frames/img_0001.jpg, ./frames/img_0002.jpg, ...)''')
+    parser.add_argument('-o', '--output', type=str, required=True, help='''Path to output directory''')
+    # Optional process settings
+    parser.add_argument('-bs', '--batch_size', type=int, help='''How many frames to include in each GPU processing batch.''', default = 128)
+    parser.add_argument('-sf', '--skip_frames', type=int, help='''How many frames to skip e.g. 5 means look at every 6th''', default=6)
+    parser.add_argument('-xs', '--extract_size', type=int, help='''Size in pixels of extracted face images (n*n).''', default=256)
+    parser.add_argument('-s', '--scale', type=int, help='''Factor to down-sample input by for detection processing.
+    If you get too few matches try scaling by half e.g. 0.5''', default=0.25)
+    # Optional recognition settings 
+    parser.add_argument('-t', '--tolerance', type=float, help='''How much "distance" between faces to consider it a match.
+    Lower is stricter. 0.6 is typical best performance''', default=0.6)
+    parser.add_argument('-j', '--jitter', type=int, help='''How many times to re-sample images when
+    calculating recognition encodings. Higher is more accurate, but slower.
+    (100 is 100 times slower than 1).''', default=5)
+    try:
+        args = parser.parse_args()
+        RS = RecognitionSettings(tolerance=args.tolerance, jitter=args.jitter)
+        PS = ProcessSettings(batch_size=args.batch_size,
+                             skip_frames=args.skip_frames,
+                             extract_size=args.extract_size,
+                             scale=args.scale)
+        FG = FaceGrab(args.reference, RS, PS)
+        FG.process(args.input, args.output)
