@@ -41,14 +41,14 @@ If run out of memory
 If you are getting too many false positives 
 
 1. Use a more varied, more representative, range of **reference**  images
-2. Increase the **recognition.reference_jitter** so that each recognition is done using a higher number of resamples
+2. Increase the **recognition.jitter** so that each recognition is done using a higher number of resamples
 3. Decrease the **recognition.tolerance** so that each recognition is stricter e.g. 0.4
 
 If you are getting too few matches
 
 1. Use a greater number/range of **reference** images (ideally ones that look like the person in the input)
 2. Increase the **recognition.tolerance** so that each recognition is less strict e.g. 0.8
-3. Decrease the **recognition.reference_jitter** so that each recognition is done fewer resamples (less accurate) 
+3. Decrease the **recognition.jitter** so that each recognition is done fewer resamples (less accurate) 
 4. Decrease the **process.skip_frames** so that more of the input is processed (this might result in very similar extracted images)
 5. Increase the process **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
