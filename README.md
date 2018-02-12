@@ -42,6 +42,9 @@ FG = FaceGrab('./images/nick-cage-reference')
 if FG.has_references:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
 ```
+## Help!
+
+Stuff that might happen that isn't what you wanted or expected...oh cruel world!
 
 ### If run out of memory
 
