@@ -54,7 +54,7 @@ If you are getting too few matches
 
 ### Memory  
 
-Very roughly speaking process.batch_size * input frame dimensions * process.scale = VRAM
+Very roughly speaking `process.batch_size * [input frame dimensions] * process.scale = VRAM`
 
 ## Built using
 
