@@ -74,7 +74,7 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 2. Increase the **recognition.tolerance** so that each recognition is less strict e.g. 0.8
 3. Decrease the **recognition.jitter** so that each recognition is done fewer resamples (less accurate) 
 4. Decrease the **process.skip_frames** so that more of the input is processed (this might result in very similar extracted images)
-5. Increase the process **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
+5. Increase the **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
 ## Built using
 
