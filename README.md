@@ -24,16 +24,16 @@ you can set/miss any or else leave them out entirely
 RS = RecognitionSettings(jitter=1)
 PS = ProcessSettings(batch_size=64, extract_size=512, scale=.5)
 personA = FaceGrab("someone", RS, PS)
-personA.process('a1.mp4', 'a1')
-personA.process('a2.mp4', 'a2')
+personA.process('a1.mp4', 'a')
+personA.process('a2.mp4', 'a')
 ```
 
 Or like...
 ```python
 personB = FaceGrab("someone-else", process=ProcessSettings(scale=.125))
-personB.process('b1.mp4', 'b1')
+personB.process('b.mp4', 'b')
 personC = FaceGrab("another-person", recognition=RecognitionSettings(tolerance=.4))
-personC.process('b1.mp4', 'b1')
+personC.process('c.mp4', 'c')
 ```
 
 Also If you want to enure you have recognition encodings before you begin...
