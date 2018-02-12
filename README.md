@@ -3,13 +3,16 @@
 Extract a known face from a video or image sequence.
 
 Uses a combination of a (precomputed) deep learning CNN model to quickly batch detect faces
-in video frames then HoG face recognition with a computed reference face encoding or set of encodings.
+in video frames then HoG face recognition with single or multiple encodings computed from known references
 
 Using the GPU with CUDA in this way means batch processing face detection in up to 128 frames
 at at time can be achieved (VRAM dependant). This combined with other speed/optimisation techniques
-(such as downsampling, default frame skipping, etc) means that very high quality
-known-face-images can be extracted from video file many times faster than using seperate
+(such as downsampling the process frames, early frame skipping, etc) means that very high quality, low false positive, 
+faces can be extracted from video or image sequences file many times faster than using seperate
 frame splitting/extraction/detection applications, or by methods that are CPU bound and only operate on individual images.
+
+> One important caveat to note in this process is that the input frames/images must be exactly the same dimensions.
+> As this is primarily geared towards extraction from video this should not be an issue, but it is worth bearing in mind should you get > any weird errors when processing image sequences.
 
 ## Usage
 
@@ -80,5 +83,6 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 - Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
 
 YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 :(
+
 
 
