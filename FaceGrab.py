@@ -2,8 +2,8 @@
 Extract a known face from a video.
 
 Uses a combination of a deep learning CNN model to batch detect faces
-in video frames, or a sequence of images, in GPU with CUDA.
-It then uses HoG to compare the detected faces with a computed reference set of face encodings.
+in video frames, or a sequence of images, in GPU with CUDA and HoG to compare
+the detected faces with a computed reference set of face encodings.
 '''
 
 from os import path, listdir
