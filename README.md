@@ -40,7 +40,7 @@ personC = FaceGrab("another-person", recognition=RecognitionSettings(tolerance=.
 personC.process('c.mp4', 'c')
 ```
 
-Also If you want to enure you have recognition encodings before you begin...
+Also If you want to ensure you have recognition encodings before you begin...
 ```python
 FG = FaceGrab('./images/nick-cage-reference')
 if FG.has_references:
