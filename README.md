@@ -17,31 +17,44 @@ frame splitting/extraction/detection applications, or by methods that are CPU bo
 FG = FaceGrab('./images/nick-cage-reference')
 if FG.has_references:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
+
+# Or use the Process/Recognition settings to tweak :) 
+# you can set/miss any or else leave them out entirely 
+RS = RecognitionSettings(jitter=1)
+PS = ProcessSettings(batch_size=64, extract_size=512, scale=.5)
+personA = FaceGrab("someone", RS, PS)
+personA.process('a1.mp4', 'a1')
+personA.process('a2.mp4', 'a2')
+
+# Or like...
+personB = FaceGrab("someone-else", process=ProcessSettings(scale=.125))
+personB.process('b1.mp4', 'b1')
+personC = FaceGrab("another-person", recognition=RecognitionSettings(tolerance=.4))
+personC.process('b1.mp4', 'b1')
 ```
 
 If run out of memory
 
-1. Reduce the **batch_size**  - the whole thing will take longer
-2. Decrease the process **scale**  e.g. 0.125 (1/8) - you may well get fewer face detections
+1. Reduce the **process.batch_size**  - note the whole thing will take longer!
+2. Decrease the **process.scale**  e.g. 0.125 (1/8) - you may well get fewer face detections
 
 If you are getting too many false positives 
 
 1. Use a more varied, more representative, range of **reference**  images
-2. Increase the **reference_jitter** so that each recognition is done using a higher number of resamples
-3. Decrease the **tolerance** so that each recognition is stricter e.g. 0.4
+2. Increase the **recognition.reference_jitter** so that each recognition is done using a higher number of resamples
+3. Decrease the **recognition.tolerance** so that each recognition is stricter e.g. 0.4
 
 If you are getting too few matches
 
 1. Use a greater number/range of **reference** images (ideally ones that look like the person in the input)
-2. Increase the **tolerance** so that each recognition is less strict e.g. 0.8
-3. Decrease the **reference_jitter** so that each recognition is done fewer resamples (less accurate) 
-4. Decrease the **skip_frames** amount so that more of the input is processed (this might result in very similar extracted images)
-5. Increase the process **scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
+2. Increase the **recognition.tolerance** so that each recognition is less strict e.g. 0.8
+3. Decrease the **recognition.reference_jitter** so that each recognition is done fewer resamples (less accurate) 
+4. Decrease the **process.skip_frames** so that more of the input is processed (this might result in very similar extracted images)
+5. Increase the process **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
 ### Memory  
 
-Very roughly speaking batch_size * frame dimensions * process scale = VRAM needed
-
+Very roughly speaking process.batch_size * input frame dimensions * process.scale = VRAM
 
 ## Built using
 
