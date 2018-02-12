@@ -205,7 +205,7 @@ class FaceGrab():
         sequence.release()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Facetook (tm)')
+    parser = argparse.ArgumentParser(description='FaceGrab')
     # Required settings
     parser.add_argument('-r', '--reference', type=str, required=True, help=r'''Path to a single file e.g. ./images/someone.jpg
     or a path to a directory of reference images e.g. ./images.

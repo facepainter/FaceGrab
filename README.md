@@ -17,6 +17,61 @@ frame splitting/extraction/detection applications, or by methods that are CPU bo
 
 ## Usage
 
+### Script based
+
+Example
+
+```
+python facegrab.py -i "D:/Videos/Movies/Gladiator (2000)/Gladiator (2000).avi" -o output -r russell-crowe
+```
+
+You can get help by passing -h or --help :)
+
+```
+usage: facegrab.py [-h] -r REFERENCE -i INPUT -o OUTPUT [-bs BATCH_SIZE]
+                   [-sf SKIP_FRAMES] [-xs EXTRACT_SIZE] [-s SCALE]
+                   [-t TOLERANCE] [-j JITTER]
+
+FaceGrab
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -r REFERENCE, --reference REFERENCE
+                        Path to a single file e.g. ./images/someone.jpg or a
+                        path to a directory of reference images e.g. ./images.
+                        (You can also pass an empty directory if you wish to
+                        match all faces).
+  -i INPUT, --input INPUT
+                        Path to a single file e.g. ./video/foo.mp4 Or a
+                        path/pattern of an image sequence e.g.
+                        ./frames/img_%04d.jpg (read like
+                        ./frames/img_0000.jpg, ./frames/img_0001.jpg,
+                        ./frames/img_0002.jpg, ...)
+  -o OUTPUT, --output OUTPUT
+                        Path to output directory
+  -bs BATCH_SIZE, --batch_size BATCH_SIZE
+                        How many frames to include in each GPU processing
+                        batch.
+  -sf SKIP_FRAMES, --skip_frames SKIP_FRAMES
+                        How many frames to skip e.g. 5 means look at every 6th
+  -xs EXTRACT_SIZE, --extract_size EXTRACT_SIZE
+                        Size in pixels of extracted face images (n*n).
+  -s SCALE, --scale SCALE
+                        Factor to down-sample input by for detection
+                        processing. If you get too few matches try scaling by
+                        half e.g. 0.5
+  -t TOLERANCE, --tolerance TOLERANCE
+                        How much "distance" between faces to consider it a
+                        match. Lower is stricter. 0.6 is typical best
+                        performance
+  -j JITTER, --jitter JITTER
+                        How many times to re-sample images when calculating
+                        recognition encodings. Higher is more accurate, but
+                        slower. (100 is 100 times slower than 1).
+```
+
+### Class based
+
 ```python
 FG = FaceGrab('./images/nick-cage-reference')
 FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
