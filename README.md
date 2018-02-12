@@ -15,22 +15,32 @@ frame splitting/extraction/detection applications, or by methods that are CPU bo
 
 ```python
 FG = FaceGrab('./images/nick-cage-reference')
-if FG.has_references:
-    FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
+FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
+```
 
-# Or use the Process/Recognition settings to tweak :) 
-# you can set/miss any or else leave them out entirely 
+Or use the Process/Recognition settings to tweak :) 
+you can set/miss any or else leave them out entirely 
+```python
 RS = RecognitionSettings(jitter=1)
 PS = ProcessSettings(batch_size=64, extract_size=512, scale=.5)
 personA = FaceGrab("someone", RS, PS)
 personA.process('a1.mp4', 'a1')
 personA.process('a2.mp4', 'a2')
+```
 
-# Or like...
+Or like...
+```python
 personB = FaceGrab("someone-else", process=ProcessSettings(scale=.125))
 personB.process('b1.mp4', 'b1')
 personC = FaceGrab("another-person", recognition=RecognitionSettings(tolerance=.4))
 personC.process('b1.mp4', 'b1')
+```
+
+Also If you want to enure you have recognition encodings before you begin...
+```python
+FG = FaceGrab('./images/nick-cage-reference')
+if FG.has_references:
+    FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
 ```
 
 If run out of memory
