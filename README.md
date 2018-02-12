@@ -22,7 +22,7 @@ frame splitting/extraction/detection applications, or by methods that are CPU bo
 Example
 
 ```
-python facegrab.py -i "D:/Videos/Movies/Gladiator (2000)/Gladiator (2000).avi" -o output -r russell-crowe
+python facegrab.py -i "./movies/Gladiator (2000).avi" -o ./output -r ./pics/russell-crowe
 ```
 
 You can get help by passing -h or --help :)
