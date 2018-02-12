@@ -43,28 +43,29 @@ if FG.has_references:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
 ```
 
-If run out of memory
+### If run out of memory
 
 1. Reduce the **process.batch_size**  - note the whole thing will take longer!
 2. Decrease the **process.scale**  e.g. 0.125 (1/8) - you may well get fewer face detections
 
-If you are getting too many false positives 
+### If you are getting too many false positives (extracted iamges of the wrong face/not faces)
 
-1. Use a more varied, more representative, range of **reference**  images
-2. Increase the **recognition.jitter** so that each recognition is done using a higher number of resamples
+1. Use a more varied, higher quality, more representative, range of **reference**  images (ideally ones that look like the person in the input)
+2. Increase the **recognition.jitter** so that each encoding/check is done using a higher number of resamples - note this will increase the processing time.
 3. Decrease the **recognition.tolerance** so that each recognition is stricter e.g. 0.4
 
-If you are getting too few matches
+### If you are getting too few matches (missing lots of good images from input)
 
-1. Use a greater number/range of **reference** images (ideally ones that look like the person in the input)
+1. Use a more varied, higher quality, more representative, range of **reference**  images (ideally ones that look like the person in the input)
 2. Increase the **recognition.tolerance** so that each recognition is less strict e.g. 0.8
 3. Decrease the **recognition.jitter** so that each recognition is done fewer resamples (less accurate) 
 4. Decrease the **process.skip_frames** so that more of the input is processed (this might result in very similar extracted images)
 5. Increase the process **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
-### Memory  
+### OOM :( - Memory issues  
 
 Very roughly speaking `process.batch_size * [input frame dimensions] * process.scale = VRAM`
+As long as you have 2GB+ VRAM and you play with the settings you *should* be golden :)
 
 ## Built using
 
