@@ -46,12 +46,19 @@ if FG.has_references:
 
 Stuff that might happen that isn't what you wanted or expected...oh cruel world!
 
-### If run out of memory
+### OOM :( - Memory issues 
+
+Very roughly speaking `process.batch_size * [input frame dimensions] * process.scale = VRAM`
+As long as you have 2GB+ VRAM and you play with the settings you *should* be golden :)
+
+The two key things being
 
 1. Reduce the **process.batch_size**  - note the whole thing will take longer!
 2. Decrease the **process.scale**  e.g. 0.125 (1/8) - you may well get fewer face detections
 
-### If you are getting too many false positives (extracted iamges of the wrong face/not faces)
+You could also try re-encoding the video to a lower resolution, but that is cheating and punishable by...nothing.
+
+### If you are getting too many false positives (extracted images of the wrong face/not faces)
 
 1. Use a more varied, higher quality, more representative, range of **reference**  images (ideally ones that look like the person in the input)
 2. Increase the **recognition.jitter** so that each encoding/check is done using a higher number of resamples - note this will increase the processing time.
@@ -65,11 +72,6 @@ Stuff that might happen that isn't what you wanted or expected...oh cruel world!
 4. Decrease the **process.skip_frames** so that more of the input is processed (this might result in very similar extracted images)
 5. Increase the process **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
-### OOM :( - Memory issues  
-
-Very roughly speaking `process.batch_size * [input frame dimensions] * process.scale = VRAM`
-As long as you have 2GB+ VRAM and you play with the settings you *should* be golden :)
-
 ## Built using
 
 - CUDA 8.0 - https://developer.nvidia.com/cuda-80-ga2-download-archive
@@ -78,3 +80,5 @@ As long as you have 2GB+ VRAM and you play with the settings you *should* be gol
 - Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
 
 YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 :(
+
+
