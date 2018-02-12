@@ -214,3 +214,4 @@ class FaceGrab():
                                                                     self._ps.batch_size))
         self.__batch_builder(output_path, sequence, total_frames)
         sequence.release()
+
