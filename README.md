@@ -11,8 +11,9 @@ at at time can be achieved (VRAM dependant). This combined with other speed/opti
 faces can be extracted from video or image sequences file many times faster than using seperate
 frame splitting/extraction/detection applications, or by methods that are CPU bound and only operate on individual images.
 
-> One important caveat to note in this process is that the input frames/images must be exactly the same dimensions.
-> As this is primarily geared towards extraction from video this should not be an issue, but it is worth bearing in mind should you get > any weird errors when processing image sequences.
+> One important caveat in this process is that the input frames/images must be exactly the same dimensions.
+> As this is primarily geared towards extraction from video this should not be an issue.
+> However it is worth bearing in mind should you get errors processing image sequences :)
 
 ## Usage
 
