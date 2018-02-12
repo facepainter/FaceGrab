@@ -205,7 +205,7 @@ class FaceGrab():
         sequence.release()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='FaceGrab')
+    parser = argparse.ArgumentParser(description='''FaceGrab''')
     # Required settings
     parser.add_argument('-r', '--reference', type=str, required=True, help=r'''Path to a single file e.g. ./images/someone.jpg
     or a path to a directory of reference images e.g. ./images.
@@ -226,12 +226,12 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--jitter', type=int, help='''How many times to re-sample images when
     calculating recognition encodings. Higher is more accurate, but slower.
     (100 is 100 times slower than 1).''', default=5)
-    try:
-        args = parser.parse_args()
-        RS = RecognitionSettings(tolerance=args.tolerance, jitter=args.jitter)
-        PS = ProcessSettings(batch_size=args.batch_size,
-                             skip_frames=args.skip_frames,
-                             extract_size=args.extract_size,
-                             scale=args.scale)
-        FG = FaceGrab(args.reference, RS, PS)
-        FG.process(args.input, args.output)
+    args = parser.parse_args()
+    RS = RecognitionSettings(tolerance=args.tolerance, jitter=args.jitter)
+    PS = ProcessSettings(batch_size=args.batch_size,
+                            skip_frames=args.skip_frames,
+                            extract_size=args.extract_size,
+                            scale=args.scale)
+    FG = FaceGrab(args.reference, RS, PS)
+    FG.process(args.input, args.output)
+    
