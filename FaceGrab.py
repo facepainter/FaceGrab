@@ -59,6 +59,7 @@ class FaceGrab(object):
         self._reference_encodings = []
         self._total_extracted = 0
         self.__check_reference(reference)
+        print('Found {} face references'.format(self.reference_count))
 
     @property
     def reference_count(self):
@@ -84,25 +85,25 @@ class FaceGrab(object):
 
     @staticmethod
     def __file_count(directory):
+        '''Returns the number of files in a directory'''
         return len([item for item in listdir(directory) if path.isfile(path.join(directory, item))])
 
     def __check_reference(self, reference):
-        '''Checks the type of reference and looks for encodings'''
+        '''Checks if the reference is a directory/file and looks for encodings'''
+        if reference == '*':
+            return
         if path.isdir(reference):
             with tqdm(total=self.__file_count(reference), unit='files') as progress:
                 for file in listdir(reference):
-                    progress.update(1)
-                    progress.set_description('Checking reference: {}'.format(file))
-                    progress.refresh()
-                    self.__parse_encoding(path.join(reference, file))
-        elif path.isfile(reference):
+                    if path.isfile(path.join(reference, file)):
+                        progress.update(1)
+                        progress.set_description('Checking reference: {}'.format(file))
+                        self.__parse_encoding(path.join(reference, file))
+            return
+        if path.isfile(reference):
             self.__parse_encoding(reference)
-        if self.reference_count:
-            print('Found {} face references'.format(self.reference_count))
-        else:
-            print('Warning: no face references have been detected')
-            print('Are you sure your reference is correct? {}'.format(reference))
-            print('If you process a video *all* detected faces will be extracted')
+            return
+        raise ValueError('Invalid reference: {}'.format(reference))
 
     def __parse_encoding(self, image_path):
         '''Adds the first face encoding in an image to the reference encodings'''
@@ -116,6 +117,7 @@ class FaceGrab(object):
         If no reference encodings are present any face is classed as recognised.'''
         if not self.reference_count:
             return True
+        # TODO: is [(known_face_location),scaled(unknown_face_location)] faster than None?
         encoding = face_recognition.face_encodings(face, None, self._rs.jitter)
         if numpy.any(encoding):
             return numpy.any(face_recognition.compare_faces(self._reference_encodings,
@@ -133,10 +135,10 @@ class FaceGrab(object):
         for index, locations in enumerate(batch):
             yield (index, locations)
 
-    def __get_faces(self, face_locations, position):
+    def __get_faces(self, image, face_locations):
         '''Get the faces from a set of locations'''
         for _, location in enumerate(face_locations):
-            face = self.__extract(self._orignal_frames[position], location, self._ps.scale)
+            face = self.__extract(image, location, self._ps.scale)
             yield face
 
     def __save_extract(self, face, file_path):
@@ -161,15 +163,17 @@ class FaceGrab(object):
         '''Handles each batch of detected faces, performing recognition on each'''
         with tqdm(total=self._ps.batch_size, unit='frame') as progress:
             extracted = 0
-            for location_index, locations in self.__get_face_locations():
+            # each set of face locations in the batch
+            for idx, locations in self.__get_face_locations():
                 progress.update(1)
                 progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
-                for face in self.__get_faces(locations, location_index):
+                # NB: recognition on original image
+                for face in self.__get_faces(self._orignal_frames[idx], locations):
                     if self.__recognise(face):
                         extracted += 1
                         name = self.__format_name(output_path, self._total_extracted)
                         self.__save_extract(face, name)
-                        # frame v.unlikely to have target face more than once
+                        # image v.unlikely to have target face more than once
                         # however this only holds true if we have a reference
                         if self.reference_count:
                             break
@@ -203,12 +207,10 @@ class FaceGrab(object):
         total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
         total_work = int(total_frames / self._ps.skip_frames)
         total_batches = int(total_work / self._ps.batch_size)
-        total_refs = len(self._reference_encodings)
-        print('Processing {} at {} scale'.format(input_path, self._ps.scale))
-        print('Using {} reference{} ({} jitter {} tolerance)'.format(total_refs,
-                                                                     's' if total_refs > 1 else '',
-                                                                     self._rs.jitter,
-                                                                     self._rs.tolerance))
+        print('Processing {} ({} scale)'.format(input_path, self._ps.scale))
+        print('References {} ({} jitter {} tolerance)'.format(self.reference_count,
+                                                              self._rs.jitter,
+                                                              self._rs.tolerance))
         print('Checking {} of {} frames in {} batches of {}'.format(total_work,
                                                                     total_frames,
                                                                     total_batches,
