@@ -28,9 +28,9 @@ python facegrab.py -i "./movies/Gladiator (2000).avi" -o ./output -r ./pics/russ
 You can get help by passing -h or --help :)
 
 ```
-usage: facegrab.py [-h] -r REFERENCE -i INPUT -o OUTPUT [-bs BATCH_SIZE]
-                   [-sf SKIP_FRAMES] [-xs EXTRACT_SIZE] [-s SCALE]
-                   [-t TOLERANCE] [-j JITTER]
+usage: facegrab.py [-h] -r REFERENCE -i INPUT -o OUTPUT [-bs [2-128]]
+                   [-sf [0-1000]] [-xs [32-1024]] [-s [0.1-1.0]]
+                   [-t [0.1-1.0]] [-j [1-1000]]
 
 FaceGrab
 
@@ -49,22 +49,22 @@ optional arguments:
                         ./frames/img_0002.jpg, ...)
   -o OUTPUT, --output OUTPUT
                         Path to output directory
-  -bs BATCH_SIZE, --batch_size BATCH_SIZE
+  -bs [2-128], --batch_size [2-128]
                         How many frames to include in each GPU processing
                         batch.
-  -sf SKIP_FRAMES, --skip_frames SKIP_FRAMES
+  -sf [0-1000], --skip_frames [0-1000]
                         How many frames to skip e.g. 5 means look at every 6th
-  -xs EXTRACT_SIZE, --extract_size EXTRACT_SIZE
+  -xs [32-1024], --extract_size [32-1024]
                         Size in pixels of extracted face images (n*n).
-  -s SCALE, --scale SCALE
+  -s [0.1-1.0], --scale [0.1-1.0]
                         Factor to down-sample input by for detection
                         processing. If you get too few matches try scaling by
                         half e.g. 0.5
-  -t TOLERANCE, --tolerance TOLERANCE
+  -t [0.1-1.0], --tolerance [0.1-1.0]
                         How much "distance" between faces to consider it a
                         match. Lower is stricter. 0.6 is typical best
                         performance
-  -j JITTER, --jitter JITTER
+  -j [1-1000], --jitter [1-1000]
                         How many times to re-sample images when calculating
                         recognition encodings. Higher is more accurate, but
                         slower. (100 is 100 times slower than 1).
