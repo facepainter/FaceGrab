@@ -25,11 +25,17 @@ Example
 python facegrab.py -r ./pics/russell-crowe -i "./movies/Gladiator (2000).avi" -o ./output 
 ```
 
-You can get help by passing -h or --help :)
+If you like you can also watch the process in action with display_output :)
+
+```
+python facegrab.py -r ./pics/russell-crowe -i "./movies/Gladiator (2000).avi" -o ./output -display_output
+```
+
+You can get help by passing -h or --help ... you should always ask for help or rtfm :)
 
 ```
 usage: facegrab.py [-h] -r REFERENCE -i INPUT -o OUTPUT [-bs [2-128]]
-                   [-sf [0-1000]] [-xs [32-1024]] [-s [0.1-1.0]]
+                   [-sf [0-1000]] [-xs [32-1024]] [-s [0.1-1.0]] [-do]
                    [-t [0.1-1.0]] [-j [1-1000]]
 
 FaceGrab
@@ -60,6 +66,9 @@ optional arguments:
                         Factor to down-sample input by for detection
                         processing. If you get too few matches try scaling by
                         half e.g. 0.5
+  -do, --display_output
+                        Show the detection and extraction images (slows
+                        processing).
   -t [0.1-1.0], --tolerance [0.1-1.0]
                         How much "distance" between faces to consider it a
                         match. Lower is stricter. 0.6 is typical best

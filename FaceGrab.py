@@ -29,11 +29,13 @@ class ProcessSettings(NamedTuple):
     :param int skip_frames: How many frames to skip e.g. 5 means look at every 6th
     :param int extract_size: Size in pixels of extracted face images (n*n).
     :param float scale: Amount to down-sample input by for detection processing.
+    :param bool display_output: Show the detection and extraction images in process.
     '''
     batch_size: int = 128
     skip_frames: int = 6
     extract_size: int = 256
     scale: float = .25
+    display_output: bool = False
 
 class FaceGrab(object):
     '''
@@ -53,7 +55,7 @@ class FaceGrab(object):
                                     scale=numpy.clip(process.scale, 0, 1.0))
         self._rs = recognition._replace(tolerance=numpy.clip(recognition.tolerance, 0.1, 1))
         self._process_frames = []
-        self._orignal_frames = []
+        self._original_frames = []
         self._reference_encodings = []
         self._total_extracted = 0
         self.__check_reference(reference)
@@ -87,7 +89,7 @@ class FaceGrab(object):
         return len([item for item in listdir(directory) if path.isfile(path.join(directory, item))])
 
     def __check_reference(self, reference):
-        '''Checks if the reference is a directory/file and looks for encodings'''
+        '''Checks if the reference is a wild-card/directory/file and looks for encodings'''
         if reference == '*':
             return
         if path.isdir(reference):
@@ -116,6 +118,7 @@ class FaceGrab(object):
         if not self.reference_count:
             return True
         # TODO: is [(known_face_location),scaled(unknown_face_location)] faster than None?
+        # location = face_recognition.face_locations(face, 0)
         encoding = face_recognition.face_encodings(face, None, self._rs.jitter)
         if numpy.any(encoding):
             return numpy.any(face_recognition.compare_faces(self._reference_encodings,
@@ -125,7 +128,7 @@ class FaceGrab(object):
 
     def __reset_frames(self):
         self._process_frames = []
-        self._orignal_frames = []
+        self._original_frames = []
 
     def __get_face_locations(self):
         '''Get the batch face locations and frame number'''
@@ -144,6 +147,9 @@ class FaceGrab(object):
         image = cv2.resize(face, (self._ps.extract_size, self._ps.extract_size))
         cv2.imwrite(file_path, image)
         self._total_extracted += 1
+        if self._ps.display_output:
+            cv2.imshow('extracted', image)
+            cv2.waitKey(delay=1)
 
     def __get_fame(self, sequence):
         '''Grabs, decodes and returns the next frame and number.'''
@@ -157,6 +163,16 @@ class FaceGrab(object):
                 continue
             yield (frame, frame_count)
 
+    def __draw_detection(self, idx, locations):
+        '''draws the process frame and the face locations
+        scaled back on to the original source frames'''
+        #factor = int(1 / self._ps.scale)
+        frame = self._process_frames[idx][:, :, ::-1] # BGR->RGB
+        for (top, right, bottom, left) in locations:
+            cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
+        cv2.imshow('process', frame)
+        cv2.waitKey(delay=1)
+
     def __do_batch(self, batch_count, output_path):
         '''Handles each batch of detected faces, performing recognition on each'''
         with tqdm(total=self._ps.batch_size, unit='frame') as progress:
@@ -165,8 +181,11 @@ class FaceGrab(object):
             for idx, locations in self.__get_face_locations():
                 progress.update(1)
                 progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
+                # display output...
+                if self._ps.display_output:
+                    self.__draw_detection(idx, locations)
                 # NB: recognition on original image
-                for face in self.__get_faces(self._orignal_frames[idx], locations):
+                for face in self.__get_faces(self._original_frames[idx], locations):
                     if self.__recognise(face):
                         extracted += 1
                         name = self.__format_name(output_path, self._total_extracted)
@@ -188,7 +207,7 @@ class FaceGrab(object):
                 progress.update(frame_count - progress.n)
                 progress.set_description('Total (extracted {})'.format(self._total_extracted))
                 self._process_frames.append(self.__downsample(frame, self._ps.scale))
-                self._orignal_frames.append(frame)
+                self._original_frames.append(frame)
                 if len(self._process_frames) == self._ps.batch_size:
                     batch_count += 1
                     self.__do_batch(batch_count, output_path)
@@ -217,6 +236,7 @@ class FaceGrab(object):
 
 if __name__ == '__main__':
     import argparse
+
     class Range(object):
         '''Restricted range for float arguments'''
         def __init__(self, start, end):
@@ -251,6 +271,8 @@ if __name__ == '__main__':
                     metavar="[0.1-1.0]",
                     help='''Factor to down-sample input by for detection processing.
     If you get too few matches try scaling by half e.g. 0.5''')
+    AP.add_argument('-do', '--display_output', action='store_true',
+                    help='''Show the detection and extraction images (slows processing).''')
     # Optional recognition settings
     AP.add_argument('-t', '--tolerance', type=float, default=0.6, choices=[Range(0.1, 1.0)],
                     metavar="[0.1-1.0]",
@@ -266,6 +288,7 @@ if __name__ == '__main__':
     PS = ProcessSettings(batch_size=ARGS.batch_size,
                          skip_frames=ARGS.skip_frames,
                          extract_size=ARGS.extract_size,
-                         scale=ARGS.scale)
+                         scale=ARGS.scale,
+                         display_output=ARGS.display_output)
     FG = FaceGrab(ARGS.reference, RS, PS)
     FG.process(ARGS.input, ARGS.output)
