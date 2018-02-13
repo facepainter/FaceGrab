@@ -5,8 +5,6 @@ Uses a combination of a deep learning CNN model to batch detect faces
 in video frames, or a sequence of images, in GPU with CUDA and HoG to compare
 the detected faces with a computed reference set of face encodings.
 '''
-
-import argparse
 from os import path, listdir
 from typing import NamedTuple
 
@@ -218,6 +216,15 @@ class FaceGrab(object):
         self.__batch_builder(output_path, sequence, total_frames)
 
 if __name__ == '__main__':
+    import argparse
+    class Range(object):
+        '''Restricted range for float arguments'''
+        def __init__(self, start, end):
+            self.start = start
+            self.end = end
+        def __eq__(self, other):
+            return self.start <= other <= self.end
+
     AP = argparse.ArgumentParser(description='''FaceGrab''')
     # Required settings
     AP.add_argument('-r', '--reference', type=str, required=True,
@@ -231,20 +238,26 @@ if __name__ == '__main__':
     AP.add_argument('-o', '--output', type=str, required=True,
                     help='''Path to output directory''')
     # Optional process settings
-    AP.add_argument('-bs', '--batch_size', type=int, default=128,
+    AP.add_argument('-bs', '--batch_size', type=int, default=128, choices=range(2, 128),
+                    metavar="[2-128]",
                     help='''How many frames to include in each GPU processing batch.''')
-    AP.add_argument('-sf', '--skip_frames', type=int, default=6,
+    AP.add_argument('-sf', '--skip_frames', type=int, default=6, choices=range(0, 1000),
+                    metavar="[0-1000]",
                     help='''How many frames to skip e.g. 5 means look at every 6th''')
-    AP.add_argument('-xs', '--extract_size', type=int, default=256,
+    AP.add_argument('-xs', '--extract_size', type=int, default=256, choices=range(32, 1024),
+                    metavar="[32-1024]",
                     help='''Size in pixels of extracted face images (n*n).''')
-    AP.add_argument('-s', '--scale', type=int, default=0.25,
+    AP.add_argument('-s', '--scale', type=float, default=0.25, choices=[Range(0.1, 1.0)],
+                    metavar="[0.1-1.0]",
                     help='''Factor to down-sample input by for detection processing.
     If you get too few matches try scaling by half e.g. 0.5''')
     # Optional recognition settings
-    AP.add_argument('-t', '--tolerance', type=float, default=0.6,
+    AP.add_argument('-t', '--tolerance', type=float, default=0.6, choices=[Range(0.1, 1.0)],
+                    metavar="[0.1-1.0]",
                     help='''How much "distance" between faces to consider it a match.
     Lower is stricter. 0.6 is typical best performance''')
-    AP.add_argument('-j', '--jitter', type=int, default=5,
+    AP.add_argument('-j', '--jitter', type=int, default=5, choices=range(1, 1000),
+                    metavar="[1-1000]",
                     help='''How many times to re-sample images when
     calculating recognition encodings. Higher is more accurate, but slower.
     (100 is 100 times slower than 1).''')
