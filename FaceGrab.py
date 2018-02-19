@@ -51,8 +51,8 @@ class FaceGrab(object):
             process = ProcessSettings()
         skip_sanity = 1 if process.skip_frames <= 0 else process.skip_frames + 1
         self.__ps = process._replace(batch_size=numpy.clip(process.batch_size, 2, 128),
-                                    skip_frames=skip_sanity,
-                                    scale=numpy.clip(process.scale, 0, 1.0))
+                                     skip_frames=skip_sanity,
+                                     scale=numpy.clip(process.scale, 0, 1.0))
         self.__rs = recognition._replace(tolerance=numpy.clip(recognition.tolerance, 0.1, 1))
         self.__process_frames = []
         self.__original_frames = []
@@ -68,10 +68,10 @@ class FaceGrab(object):
     @staticmethod
     def __downsample(image, scale):
         '''Downscale and convert image for faster detection processing'''
-        sampled = cv2.resize(image, 
-                             (0, 0), 
-                             fx=scale, 
-                             fy=scale, 
+        sampled = cv2.resize(image,
+                             (0, 0),
+                             fx=scale,
+                             fy=scale,
                              interpolation=cv2.INTER_AREA) if scale > 0 else image
         return sampled[:, :, ::-1] # BGR->RGB
 
@@ -133,11 +133,14 @@ class FaceGrab(object):
         self.__process_frames.clear()
         self.__original_frames.clear()
 
+
     def __get_face_locations(self):
-        '''Get the batch face locations and frame number'''
-        batch = face_recognition.batch_face_locations(self.__process_frames, 1, self.__ps.batch_size)
-        for index, locations in enumerate(batch):
-            yield (index, locations)
+        '''Get the total detected and zipped frame numbers/locations'''
+        batch = face_recognition.batch_face_locations(self.__process_frames,
+                                                      1,
+                                                      self.__ps.batch_size)
+        hits = numpy.nonzero(batch)[0]
+        return (len(hits), zip(hits, numpy.asarray(batch)[hits]))
 
     def __get_faces(self, image, face_locations):
         '''Get the faces from a set of locations'''
@@ -149,7 +152,7 @@ class FaceGrab(object):
         '''Saves the face to file_path at the set extract size'''
         image = cv2.resize(face,
                            (self.__ps.extract_size, self.__ps.extract_size),
-                           interpolation = cv2.INTER_AREA)
+                           interpolation=cv2.INTER_AREA)
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
         if self.__ps.display_output:
@@ -171,7 +174,6 @@ class FaceGrab(object):
     def __draw_detection(self, idx, locations):
         '''draws the process frame and the face locations
         scaled back on to the original source frames'''
-        #factor = int(1 / self._ps.scale)
         frame = self.__process_frames[idx][:, :, ::-1] # BGR->RGB
         for (top, right, bottom, left) in locations:
             cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
@@ -180,10 +182,13 @@ class FaceGrab(object):
 
     def __do_batch(self, batch_count, output_path):
         '''Handles each batch of detected faces, performing recognition on each'''
-        with tqdm(total=self.__ps.batch_size, unit='frame') as progress:
+        total, results = self.__get_face_locations()
+        if not total:
+            return
+        with tqdm(total=total, unit='checks') as progress:
             extracted = 0
             # each set of face locations in the batch
-            for idx, locations in self.__get_face_locations():
+            for idx, locations in results:
                 progress.update(1)
                 progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
                 # display output...
