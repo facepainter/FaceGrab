@@ -84,7 +84,7 @@ class FaceGrab(object):
 
     @staticmethod
     def __format_name(output_path, name):
-        return path.join(output_path, '{}.jpg'.format(name))
+        return path.join(output_path, f'{name}.jpg')
 
     @staticmethod
     def __file_count(directory):
@@ -101,7 +101,7 @@ class FaceGrab(object):
                     full_path = path.join(reference, file)
                     if path.isfile(full_path):
                         progress.update(1)
-                        progress.set_description('Checking reference: {}'.format(file))
+                        progress.set_description(f'Checking reference: {file}')
                         self.__parse_encoding(full_path)
             return
         if path.isfile(reference):
@@ -190,7 +190,7 @@ class FaceGrab(object):
             # each set of face locations in the batch
             for idx, locations in results:
                 progress.update(1)
-                progress.set_description('Batch #{} (recognised {})'.format(batch_count, extracted))
+                progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
                 # display output...
                 if self.__ps.display_output:
                     self.__draw_detection(idx, locations)
@@ -215,7 +215,7 @@ class FaceGrab(object):
             batch_count = 0
             for frame, frame_count in self.__get_fame(sequence, total_frames):
                 progress.update(frame_count - progress.n)
-                progress.set_description('Total (extracted {})'.format(self.__total_extracted))
+                progress.set_description(f'Total (extracted {self.__total_extracted})')
                 self.__process_frames.append(self.__downsample(frame, self.__ps.scale))
                 self.__original_frames.append(frame)
                 if len(self.__process_frames) == self.__ps.batch_size:
@@ -231,18 +231,13 @@ class FaceGrab(object):
         '''
         self.__total_extracted = 0
         sequence = cv2.VideoCapture(input_path)
-        total_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
-        total_work = int(total_frames / self.__ps.skip_frames)
-        total_batches = int(total_work / self.__ps.batch_size)
-        print('Processing {} ({} scale)'.format(input_path, self.__ps.scale))
-        print('References {} ({} jitter {} tolerance)'.format(self.reference_count,
-                                                              self.__rs.jitter,
-                                                              self.__rs.tolerance))
-        print('Checking {} of {} frames in {} batches of {}'.format(total_work,
-                                                                    total_frames,
-                                                                    total_batches,
-                                                                    self.__ps.batch_size))
-        self.__batch_builder(output_path, sequence, total_frames)
+        frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
+        work = int(frames / self.__ps.skip_frames)
+        batches = int(work / self.__ps.batch_size)
+        print(f'Processing {input_path} ({self.__ps.scale} scale)')
+        print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance)')
+        print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
+        self.__batch_builder(output_path, sequence, frames)
 
 if __name__ == '__main__':
     import argparse
