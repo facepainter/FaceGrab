@@ -107,7 +107,7 @@ class FaceGrab(object):
         if path.isfile(reference):
             self.__parse_encoding(reference)
             return
-        raise ValueError('Invalid reference: {}'.format(reference))
+        raise ValueError(f'Invalid reference: {reference}')
 
     def __parse_encoding(self, image_path):
         '''Adds the first face encoding in an image to the reference encodings'''
