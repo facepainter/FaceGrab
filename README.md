@@ -46,6 +46,10 @@ python facegrab.py -r A.npz -i ./video/A2.mp4 -o ./extract/A
 You can get help by passing -h or --help ... you should always ask for help or rtfm :)
 
 ```
+usage: facegrab.py [-h] -r REFERENCE -i INPUT -o OUTPUT [-sr SAVE_REFERENCES]
+                   [-bs [2-128]] [-sf [0-1000]] [-xs [32-1024]] [-s [0.1-1.0]]
+                   [-do] [-t [0.1-1.0]] [-j [1-1000]]
+
 FaceGrab
 
 optional arguments:
