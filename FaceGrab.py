@@ -73,18 +73,14 @@ class FaceGrab(object):
                              fx=scale,
                              fy=scale,
                              interpolation=cv2.INTER_AREA) if scale > 0 else image
-        return sampled[:, :, ::-1] # BGR->RGB
+        return sampled[:, :, ::-1] #RGB->BGR
 
     @staticmethod
     def __extract(image, face_location, scale):
         '''Upscale coordinates and extract face'''
         factor = int(1 / scale) if scale > 0 else 1
-        top, right, bottom, left = face_location
-        return image[top * factor:bottom * factor, left * factor:right * factor]
-
-    @staticmethod
-    def __format_name(output_path, name):
-        return path.join(output_path, f'{name}.jpg')
+        top, right, bottom, left = tuple(factor * n for n in face_location)
+        return image[top:bottom, left:right]
 
     @staticmethod
     def __file_count(directory):
@@ -105,6 +101,9 @@ class FaceGrab(object):
                         self.__parse_encoding(full_path)
             return
         if path.isfile(reference):
+            if reference.endswith('.npz'): #saved
+                self.load(reference)
+                return
             self.__parse_encoding(reference)
             return
         raise ValueError(f'Invalid reference: {reference}')
@@ -118,7 +117,7 @@ class FaceGrab(object):
 
     def __recognise(self, face):
         '''Checks a given face against any known reference encodings.
-        If face is within the tolerance it is classed as recognised.
+        If face is within the tolerance of any reference it is classed as recognised.
         If no reference encodings are present any face is classed as recognised.'''
         if not self.reference_count:
             return True
@@ -133,7 +132,6 @@ class FaceGrab(object):
         self.__process_frames.clear()
         self.__original_frames.clear()
 
-
     def __get_face_locations(self):
         '''Get the total detected and zipped frame numbers/locations'''
         batch = face_recognition.batch_face_locations(self.__process_frames,
@@ -144,7 +142,7 @@ class FaceGrab(object):
 
     def __get_faces(self, image, face_locations):
         '''Get the faces from a set of locations'''
-        for _, location in enumerate(face_locations):
+        for location in face_locations:
             face = self.__extract(image, location, self.__ps.scale)
             yield face
 
@@ -172,9 +170,8 @@ class FaceGrab(object):
             yield (frame, frame_number)
 
     def __draw_detection(self, idx, locations):
-        '''draws the process frame and the face locations
-        scaled back on to the original source frames'''
-        frame = self.__process_frames[idx][:, :, ::-1] # BGR->RGB
+        '''draws the process frames with face detection locations'''
+        frame = self.__process_frames[idx][:, :, ::-1] #BGR->RGB
         for (top, right, bottom, left) in locations:
             cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
         cv2.imshow('process', frame)
@@ -191,14 +188,12 @@ class FaceGrab(object):
             for idx, locations in results:
                 progress.update(1)
                 progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
-                # display output...
                 if self.__ps.display_output:
                     self.__draw_detection(idx, locations)
-                # NB: recognition on original image
                 for face in self.__get_faces(self.__original_frames[idx], locations):
                     if self.__recognise(face):
                         extracted += 1
-                        name = self.__format_name(output_path, self.__total_extracted)
+                        name = path.join(output_path, f'{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
                         # image v.unlikely to have target face more than once
                         # however this only holds true if we have a reference
@@ -223,6 +218,17 @@ class FaceGrab(object):
                     self.__do_batch(batch_count, output_path)
                     self.__reset_frames()
 
+    def save(self, file_path):
+        '''Saves the references in npz format to the given path'''
+        print(f'Saving {len(self.__reference_encodings)} to {file_path}.npz')
+        numpy.savez_compressed(file_path, *self.__reference_encodings)
+
+    def load(self, file_path):
+        '''Loads references in npz format from the given path'''
+        npzfile = numpy.load(file_path)
+        print(f'Loading {len(npzfile.files)} from {file_path}')
+        self.__reference_encodings = [npzfile[key] for key in npzfile]
+
     def process(self, input_path, output_path='.'):
         '''
         Extracts known faces from the input source to the output.
@@ -235,7 +241,7 @@ class FaceGrab(object):
         work = int(frames / self.__ps.skip_frames)
         batches = int(work / self.__ps.batch_size)
         print(f'Processing {input_path} ({self.__ps.scale} scale)')
-        print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance)')
+        print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance')
         print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
         self.__batch_builder(output_path, sequence, frames)
 
@@ -253,15 +259,21 @@ if __name__ == '__main__':
     AP = argparse.ArgumentParser(description='''FaceGrab''')
     # Required settings
     AP.add_argument('-r', '--reference', type=str, required=True,
-                    help=r'''Path to a single file e.g. ./images/someone.jpg
-    or a path to a directory of reference images e.g. ./images.
-    (You can also pass an empty directory if you wish to match all faces).''')
+                    help=r'''Path to a single image file or a directory of reference images.
+                    Also accepts the path to an .npz file generated by save_references.
+                    Finally to skip recognition and extract all faces an asterix '*'
+                    can be passed.''')
     AP.add_argument('-i', '--input', type=str, required=True,
                     help=r'''Path to a single file e.g. ./video/foo.mp4
     Or a path/pattern of an image sequence e.g. ./frames/img_%%04d.jpg
     (read like ./frames/img_0000.jpg, ./frames/img_0001.jpg, ./frames/img_0002.jpg, ...)''')
     AP.add_argument('-o', '--output', type=str, required=True,
                     help='''Path to output directory''')
+    # Optional save settings
+    AP.add_argument('-sr', '--save_references', type=str,
+                    help='''Save the references in npz format.
+                    This file can be loaded as a reference avoiding the need
+                    to re-encode a set of images each time for the same person''')
     # Optional process settings
     AP.add_argument('-bs', '--batch_size', type=int, default=128, choices=range(2, 128),
                     metavar="[2-128]",
@@ -296,4 +308,6 @@ if __name__ == '__main__':
                          scale=ARGS.scale,
                          display_output=ARGS.display_output)
     FG = FaceGrab(ARGS.reference, RS, PS)
+    if ARGS.save_references:
+        FG.save(ARGS.save_references)
     FG.process(ARGS.input, ARGS.output)
