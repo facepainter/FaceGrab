@@ -227,13 +227,20 @@ class FaceGrab(object):
                     self.__do_batch(batch_count, output_path)
 
     def save(self, file_path):
-        '''Saves the references in npz format to the given path'''
+        '''
+        Saves references in compressed npz format to the given path
+            :param str file_path: Path to save file (.npz extension will be added if not present)
+        '''
         print(f'Saving {len(self.__reference_encodings)} to {file_path}.npz')
+        # TODO : images? jitter?
         numpy.savez_compressed(file_path, *self.__reference_encodings)
 
     def load(self, file_path):
-        '''Loads references in npz format from the given path.
-        NB: Overwrites any existing encodings'''
+        '''
+        Loads references in compressed npz format from the given path.
+        NB: Overwrites any existing encodings
+            :param str file_path: Path to a .npz file generated from the save method
+        '''
         npzfile = numpy.load(file_path)
         print(f'Loading {len(npzfile.files)} from {file_path}')
         self.__reference_encodings = [npzfile[key] for key in npzfile]
