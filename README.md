@@ -28,7 +28,19 @@ python facegrab.py -r ./pics/russell-crowe -i "./movies/Gladiator (2000).avi" -o
 If you like you can also watch the process in action with display_output :)
 
 ```
-python facegrab.py -r ./pics/russell-crowe -i "./movies/Gladiator (2000).avi" -o ./output -display_output
+python facegrab.py -r ./pics/russell-crowe -i "./movies/Gladiator (2000).avi" -o ./output --display_output
+```
+
+You can save encoding sets used...
+
+```
+python facegrab.py -r ./pics/A -i ./video/A.mp4 -o ./extract/A --save_references A.npz
+```
+
+And load from the saved file (so that you don't need to save reference images or reprocess for the same person) 
+
+```
+python facegrab.py -r A.npz -i ./video/A2.mp4 -o ./extract/A
 ```
 
 You can get help by passing -h or --help ... you should always ask for help or rtfm :)
@@ -142,7 +154,6 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 5. Increase the **process.scale** e.g. 0.5 (1/2) - bearing in mind you may need to reduce the batch_size accordingly
 
 ## Built using
-
 - CUDA 8.0 - https://developer.nvidia.com/cuda-80-ga2-download-archive
 - cudnn 6 for cuda 8 - https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v6/prod/8.0_20170427/cudnn-8.0-windows10-x64-v6.0-zip (login required)
 - dlib - https://github.com/davisking/dlib.git compiled with CUDA (and preferably AVX) see notes.
