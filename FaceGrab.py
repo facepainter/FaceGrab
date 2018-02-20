@@ -16,8 +16,8 @@ from tqdm import tqdm
 class RecognitionSettings(NamedTuple):
     '''
     Face recognition settings
-    :param float tolerance: How much "distance" between faces to consider it a match.
-    :param int jitter: How many times to re-sample images when calculating encodings.
+        :param float tolerance: How much "distance" between faces to consider it a match.
+        :param int jitter: How many times to re-sample images when calculating encodings.
     '''
     tolerance: float = .6
     jitter: int = 10
@@ -25,11 +25,11 @@ class RecognitionSettings(NamedTuple):
 class ProcessSettings(NamedTuple):
     '''
     Video process settings
-    :param int batch_size: How many frames to include in each GPU processing batch.
-    :param int skip_frames: How many frames to skip e.g. 5 means look at every 6th
-    :param int extract_size: Size in pixels of extracted face images (n*n).
-    :param float scale: Amount to down-sample input by for detection processing.
-    :param bool display_output: Show the detection and extraction images in process.
+        :param int batch_size: How many frames to include in each GPU processing batch.
+        :param int skip_frames: How many frames to skip e.g. 5 means look at every 6th
+        :param int extract_size: Size in pixels of extracted face images (n*n).
+        :param float scale: Amount to down-sample input by for detection processing.
+        :param bool display_output: Show the detection and extraction images in process.
     '''
     batch_size: int = 128
     skip_frames: int = 6
@@ -76,10 +76,10 @@ class FaceGrab(object):
         return sampled[:, :, ::-1] #RGB->BGR
 
     @staticmethod
-    def __extract(image, face_location, scale):
-        '''Upscale coordinates and extract face'''
+    def __extract(image, location, scale):
+        '''Upscale coordinates and location from image'''
         factor = int(1 / scale) if scale > 0 else 1
-        top, right, bottom, left = tuple(factor * n for n in face_location)
+        top, right, bottom, left = tuple(factor * n for n in location)
         return image[top:bottom, left:right]
 
     @staticmethod
@@ -132,13 +132,19 @@ class FaceGrab(object):
         self.__process_frames.clear()
         self.__original_frames.clear()
 
-    def __get_face_locations(self):
-        '''Get the total detected and zipped frame numbers/locations'''
+    def __get_location_frames(self):
+        '''Get the total faces detected
+        plus zipped fancy indexed locations/original/process based on hits.'''
         batch = face_recognition.batch_face_locations(self.__process_frames,
                                                       1,
                                                       self.__ps.batch_size)
-        hits = numpy.nonzero(batch)[0]
-        return (len(hits), zip(hits, numpy.asarray(batch)[hits]))
+        hits = numpy.nonzero(batch)[0] # fancy 
+        locations = numpy.asarray(batch)[hits] 
+        orignal = numpy.asarray(self.__original_frames)[hits]
+        process = numpy.asarray(self.__process_frames)[hits]
+        total = sum(len(x) for x in locations)
+        self.__reset_frames()
+        return (total, zip(locations, orignal, process))
 
     def __get_faces(self, image, face_locations):
         '''Get the faces from a set of locations'''
@@ -169,9 +175,9 @@ class FaceGrab(object):
                 break
             yield (frame, frame_number)
 
-    def __draw_detection(self, idx, locations):
+    def __draw_detection(self, frame, locations):
         '''draws the process frames with face detection locations'''
-        frame = self.__process_frames[idx][:, :, ::-1] #BGR->RGB
+        #frame = self.__process_frames[idx][:, :, ::-1] #BGR->RGB
         for (top, right, bottom, left) in locations:
             cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
         cv2.imshow('process', frame)
@@ -179,18 +185,18 @@ class FaceGrab(object):
 
     def __do_batch(self, batch_count, output_path):
         '''Handles each batch of detected faces, performing recognition on each'''
-        total, results = self.__get_face_locations()
+        total, results = self.__get_location_frames()
         if not total:
             return
         with tqdm(total=total, unit='checks') as progress:
             extracted = 0
             # each set of face locations in the batch
-            for idx, locations in results:
-                progress.update(1)
-                progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
+            for locations, original, processed in results:
                 if self.__ps.display_output:
-                    self.__draw_detection(idx, locations)
-                for face in self.__get_faces(self.__original_frames[idx], locations):
+                    self.__draw_detection(processed, locations)
+                for face in self.__get_faces(original, locations):
+                    progress.update(1)
+                    progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
                     if self.__recognise(face):
                         extracted += 1
                         name = path.join(output_path, f'{self.__total_extracted}.jpg')
@@ -216,7 +222,6 @@ class FaceGrab(object):
                 if len(self.__process_frames) == self.__ps.batch_size:
                     batch_count += 1
                     self.__do_batch(batch_count, output_path)
-                    self.__reset_frames()
 
     def save(self, file_path):
         '''Saves the references in npz format to the given path'''
@@ -224,7 +229,8 @@ class FaceGrab(object):
         numpy.savez_compressed(file_path, *self.__reference_encodings)
 
     def load(self, file_path):
-        '''Loads references in npz format from the given path'''
+        '''Loads references in npz format from the given path.
+        NB: Overwrites any existing encodings'''
         npzfile = numpy.load(file_path)
         print(f'Loading {len(npzfile.files)} from {file_path}')
         self.__reference_encodings = [npzfile[key] for key in npzfile]
