@@ -217,8 +217,11 @@ class FaceGrab(object):
             for frame, frame_count in self.__get_fame(sequence, total_frames):
                 progress.update(frame_count - progress.n)
                 progress.set_description(f'Total (extracted {self.__total_extracted})')
-                self.__process_frames.append(self.__downsample(frame, self.__ps.scale))
+                pf = self.__downsample(frame, self.__ps.scale)
+                self.__process_frames.append(pf)
                 self.__original_frames.append(frame)
+                if self.__ps.display_output:
+                    self.__draw_detection(pf, [])
                 if len(self.__process_frames) == self.__ps.batch_size:
                     batch_count += 1
                     self.__do_batch(batch_count, output_path)
