@@ -1,5 +1,5 @@
 '''
-Extract aligned images of a known face from a video or image sequence.
+Extract a known face from a video.
 
 Uses a combination of a deep learning CNN model to batch detect faces
 in video frames, or a sequence of images, in GPU with CUDA and HoG to compare
@@ -90,7 +90,11 @@ class FaceGrab(object):
             return cv2.resize(image[top:bottom, left:right],
                               (size, size),
                               interpolation=cv2.INTER_AREA)
-        # TODO : p p p pass p p padding?
+        # TODO : pass padding?
+        # Also would be much faster to always crop for recognition 
+        # then only do the transform on faces we are saving - however
+        # the recognition rate against untransformed faces is much lower
+        # need to test this more and decide default behavior 
         return DetectedFace(image, landmarks[0]).transform(size, 48)
 
     @staticmethod
