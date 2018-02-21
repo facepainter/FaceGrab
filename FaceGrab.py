@@ -45,7 +45,7 @@ class DetectedFace(object):
 
     def transform(self, size, padding=0):
         '''Warps the face image based on a hard-coded mean face value matrix'''
-        mat = _umeyama(np.array(self.__landmarks_xy()[17:]), _LANDMARKS_2D)[0:2]
+        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]), _LANDMARKS_2D)[0:2]
         mat = mat * (size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(self.image, mat, (size, size))
