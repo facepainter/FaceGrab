@@ -1,6 +1,6 @@
 # FaceGrab
 
-Extract aligned images of a known face from a video or image sequence.
+Batch extract aligned images of a known face from a video or image sequence.
 
 Uses a combination of a (precomputed) deep learning CNN model to quickly batch detect faces
 in video frames then HoG face recognition with single or multiple encodings computed from known references
