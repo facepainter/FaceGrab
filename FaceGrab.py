@@ -37,24 +37,8 @@ class ProcessSettings(NamedTuple):
     scale : float = .25
     display_output : bool = False
 
-class DetectedFace(object):
-    '''Image wrapper for align transforms'''
-    def __init__(self, image, landmarks):
-        self.image = image
-        self.landmarks = landmarks
-
-    def transform(self, size, padding=0):
-        '''Warps the face image based on a hard-coded mean face value matrix'''
-        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]))[0:2]
-        mat = mat * (size - 2 * padding)
-        mat[:, 2] += padding
-        return cv2.warpAffine(self.image, mat, (size, size))
-
-    def __landmarks_xy(self):
-        '''Raw landmarks to Cartesian'''
-        return [(p.x, p.y) for p in self.landmarks.parts()]
-
 class FaceGrab(object):
+
     '''
     It sure grabs faces! (tm)
         :param str reference: Path to a input data (video/image sequence)
@@ -77,6 +61,25 @@ class FaceGrab(object):
         self.__total_extracted = 0
         self.__check_reference(reference)
 
+    _MEAN_FACE_LANDMARKS = np.asarray([
+        [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02], 
+        [2.90770e-01, 3.44891e-02], [3.93397e-01, 7.73906e-02], [5.86856e-01, 7.73906e-02],
+        [6.89483e-01, 3.44891e-02], [7.99124e-01, 1.87482e-02], [9.04991e-01, 3.89150e-02],
+        [9.80040e-01, 1.06454e-01], [4.90127e-01, 2.03352e-01], [4.90127e-01, 3.07009e-01],
+        [4.90127e-01, 4.09805e-01], [4.90127e-01, 5.15625e-01], [3.66880e-01, 5.87326e-01],
+        [4.26036e-01, 6.09345e-01], [4.90127e-01, 6.28106e-01], [5.54217e-01, 6.09345e-01],
+        [6.13373e-01, 5.87326e-01], [1.21737e-01, 2.16423e-01], [1.87122e-01, 1.78758e-01],
+        [2.65825e-01, 1.79852e-01], [3.34606e-01, 2.31733e-01], [2.60918e-01, 2.45099e-01],
+        [1.82743e-01, 2.44077e-01], [6.45647e-01, 2.31733e-01], [7.14428e-01, 1.79852e-01],
+        [7.93132e-01, 1.78758e-01], [8.58516e-01, 2.16423e-01], [7.97510e-01, 2.44077e-01],
+        [7.19335e-01, 2.45099e-01], [2.54149e-01, 7.80233e-01], [3.40985e-01, 7.45405e-01],
+        [4.28858e-01, 7.27388e-01], [4.90127e-01, 7.42578e-01], [5.51395e-01, 7.27388e-01],
+        [6.39268e-01, 7.45405e-01], [7.26104e-01, 7.80233e-01], [6.42159e-01, 8.64805e-01],
+        [5.56721e-01, 9.02192e-01], [4.90127e-01, 9.09281e-01], [4.23532e-01, 9.02192e-01],
+        [3.38094e-01, 8.64805e-01], [2.90379e-01, 7.84792e-01], [4.28096e-01, 7.78746e-01],
+        [4.90127e-01, 7.85343e-01], [5.52157e-01, 7.78746e-01], [6.89874e-01, 7.84792e-01],
+        [5.53364e-01, 8.24182e-01], [4.90127e-01, 8.31803e-01], [4.26890e-01, 8.24182e-01]])
+
     @property
     def reference_count(self):
         '''Total currently loaded reference encodings for recognition'''
@@ -92,8 +95,8 @@ class FaceGrab(object):
                              interpolation=cv2.INTER_AREA) if scale > 0 else image
         return sampled[:, :, ::-1] #RGB->BGR
 
-    @staticmethod
-    def __extract(image, location, scale, size):
+    @classmethod
+    def __extract(cls, image, location, scale, size):
         '''Upscale coordinates and extract location from image at the given size'''
         factor = int(1 / scale) if scale > 0 else 1
         location_scaled = tuple(factor * n for n in location)
@@ -108,7 +111,53 @@ class FaceGrab(object):
         # TODO : would be much faster to always crop for recognition
         # and transform on save - however recognition rate against
         # untransformed faces is much lower...
-        return DetectedFace(image, landmarks[0]).transform(size, 48)
+        return cls.__transform(image, landmarks[0], size, 48)
+
+    @classmethod
+    def __transform(cls, image, landmarks, size, padding=0):
+        '''Warps the face based on a hard-coded mean face value matrix'''
+        coordinates = [(p.x, p.y) for p in landmarks.parts()]
+        mat = cls.__umeyama(np.asarray(coordinates[17:]))[0:2]
+        mat = mat * (size - 2 * padding)
+        mat[:, 2] += padding
+        return cv2.warpAffine(image, mat, (size, size))
+
+    @classmethod
+    def __umeyama(cls, face):
+        '''
+        N-D similarity transform with scaling.
+        Adapted from:
+        https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
+        http://web.stanford.edu/class/cs273/refs/umeyama.pdf
+        '''
+        N, m = face.shape
+        mx = face.mean(axis=0)
+        my = np.average(cls._MEAN_FACE_LANDMARKS, 0) 
+        dx = face - mx
+        dy = cls._MEAN_FACE_LANDMARKS - my #hard-code T?
+        A = np.dot(dy.T, dx) / N
+        d = np.ones((m,), dtype=np.double)
+        if np.linalg.det(A) < 0:
+            d[m - 1] = -1
+        T = np.eye(m + 1, dtype=np.double)
+        U, S, V = np.linalg.svd(A)
+        rank = np.linalg.matrix_rank(A) #covariance
+        if rank == 0:
+            return np.nan * T
+        elif rank == m - 1:
+            if np.linalg.det(U) * np.linalg.det(V) > 0:
+                T[:m, :m] = np.dot(U, V)
+            else:
+                s = d[m - 1]
+                d[m - 1] = -1
+                T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
+                d[m - 1] = s
+        else:
+            T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
+        scale = 1.0 / dx.var(axis=0).sum() * np.dot(S, d)
+        T[:m, m] = my - scale * np.dot(T[:m, :m], mx.T)
+        T[:m, :m] *= scale
+        return T
 
     @staticmethod
     def __file_count(directory):
@@ -285,61 +334,6 @@ class FaceGrab(object):
         # 'tqdm' object has no attribute 'miniters'
         tqdm.monitor_interval = 0
         self.__batch_builder(output_path, sequence, frames)
-
-def _umeyama(face):
-    '''
-    N-D similarity transform with scaling.
-    Adapted from:
-    https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
-    http://web.stanford.edu/class/cs273/refs/umeyama.pdf
-    '''
-    N, m = face.shape
-    mx = face.mean(axis=0)
-    my = MEAN_FACE_LANDMARKS.mean(axis=0)
-    dx = face - mx # N x m
-    dy = MEAN_FACE_LANDMARKS - my # N x m
-    A = np.dot(dy.T, dx) / N
-    d = np.ones((m,), dtype=np.double)
-    if np.linalg.det(A) < 0:
-        d[m - 1] = -1
-    T = np.eye(m + 1, dtype=np.double)
-    U, S, V = np.linalg.svd(A)
-    rank = np.linalg.matrix_rank(A) #covariance
-    if rank == 0:
-        return np.nan * T
-    elif rank == m - 1:
-        if np.linalg.det(U) * np.linalg.det(V) > 0:
-            T[:m, :m] = np.dot(U, V)
-        else:
-            s = d[m - 1]
-            d[m - 1] = -1
-            T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
-            d[m - 1] = s
-    else:
-        T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
-    scale = 1.0 / dx.var(axis=0).sum() * np.dot(S, d)
-    T[:m, m] = my - scale * np.dot(T[:m, :m], mx.T)
-    T[:m, :m] *= scale
-    return T
-
-MEAN_FACE_LANDMARKS = np.asarray([
-    [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02], 
-    [2.90770e-01, 3.44891e-02], [3.93397e-01, 7.73906e-02], [5.86856e-01, 7.73906e-02],
-    [6.89483e-01, 3.44891e-02], [7.99124e-01, 1.87482e-02], [9.04991e-01, 3.89150e-02],
-    [9.80040e-01, 1.06454e-01], [4.90127e-01, 2.03352e-01], [4.90127e-01, 3.07009e-01],
-    [4.90127e-01, 4.09805e-01], [4.90127e-01, 5.15625e-01], [3.66880e-01, 5.87326e-01],
-    [4.26036e-01, 6.09345e-01], [4.90127e-01, 6.28106e-01], [5.54217e-01, 6.09345e-01],
-    [6.13373e-01, 5.87326e-01], [1.21737e-01, 2.16423e-01], [1.87122e-01, 1.78758e-01],
-    [2.65825e-01, 1.79852e-01], [3.34606e-01, 2.31733e-01], [2.60918e-01, 2.45099e-01],
-    [1.82743e-01, 2.44077e-01], [6.45647e-01, 2.31733e-01], [7.14428e-01, 1.79852e-01],
-    [7.93132e-01, 1.78758e-01], [8.58516e-01, 2.16423e-01], [7.97510e-01, 2.44077e-01],
-    [7.19335e-01, 2.45099e-01], [2.54149e-01, 7.80233e-01], [3.40985e-01, 7.45405e-01],
-    [4.28858e-01, 7.27388e-01], [4.90127e-01, 7.42578e-01], [5.51395e-01, 7.27388e-01],
-    [6.39268e-01, 7.45405e-01], [7.26104e-01, 7.80233e-01], [6.42159e-01, 8.64805e-01],
-    [5.56721e-01, 9.02192e-01], [4.90127e-01, 9.09281e-01], [4.23532e-01, 9.02192e-01],
-    [3.38094e-01, 8.64805e-01], [2.90379e-01, 7.84792e-01], [4.28096e-01, 7.78746e-01],
-    [4.90127e-01, 7.85343e-01], [5.52157e-01, 7.78746e-01], [6.89874e-01, 7.84792e-01],
-    [5.53364e-01, 8.24182e-01], [4.90127e-01, 8.31803e-01], [4.26890e-01, 8.24182e-01]])
 
 if __name__ == '__main__':
     import argparse
