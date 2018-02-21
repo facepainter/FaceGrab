@@ -13,6 +13,8 @@ import numpy
 import face_recognition
 from tqdm import tqdm
 
+from align import DetectedFace
+
 class RecognitionSettings(NamedTuple):
     '''
     Face recognition settings
@@ -76,16 +78,33 @@ class FaceGrab(object):
         return sampled[:, :, ::-1] #RGB->BGR
 
     @staticmethod
-    def __extract(image, location, scale):
-        '''Upscale coordinates and location from image'''
+    def __extract(image, location, scale, size):
+        '''Upscale coordinates and extract location from image at the given size'''
         factor = int(1 / scale) if scale > 0 else 1
-        top, right, bottom, left = tuple(factor * n for n in location)
-        return image[top:bottom, left:right]
+        location_scaled = tuple(factor * n for n in location)
+        top, right, bottom, left = location_scaled
+        # protected member access
+        landmarks = face_recognition.api._raw_face_landmarks(image, [location_scaled])
+        if not any(landmarks):
+            print('Warning landmarks not detected - falling back to crop')
+            return cv2.resize(image[top:bottom, left:right],
+                              (size, size),
+                              interpolation=cv2.INTER_AREA)
+        # TODO : p p p pass p p padding?
+        return DetectedFace(image, landmarks[0]).transform(size, 48)
 
     @staticmethod
     def __file_count(directory):
         '''Returns the number of files in a directory'''
         return len([item for item in listdir(directory) if path.isfile(path.join(directory, item))])
+
+    @staticmethod
+    def __draw_detection(frame, locations):
+        '''draws the process frames with face detection locations'''
+        for (top, right, bottom, left) in locations:
+            cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
+        cv2.imshow('process', frame[:, :, ::-1]) #BGR->RGB
+        cv2.waitKey(delay=1)
 
     def __check_reference(self, reference):
         '''Checks if the reference is a wild-card/directory/file and looks for encodings'''
@@ -133,30 +152,26 @@ class FaceGrab(object):
         self.__original_frames.clear()
 
     def __get_location_frames(self):
-        '''Get the total faces detected
-        plus zipped fancy indexed locations/original/process based on hits.'''
+        '''Get the total faces detected and f.indexed locations/original/process based on hits.'''
         batch = face_recognition.batch_face_locations(self.__process_frames,
                                                       1,
                                                       self.__ps.batch_size)
-        hits = numpy.nonzero(batch)[0] # fancy 
-        locations = numpy.asarray(batch)[hits] 
-        orignal = numpy.asarray(self.__original_frames)[hits]
+        hits = numpy.nonzero(batch)[0] # fancy
+        locations = numpy.asarray(batch)[hits]
+        original = numpy.asarray(self.__original_frames)[hits]
         process = numpy.asarray(self.__process_frames)[hits]
         total = sum(len(x) for x in locations)
         self.__reset_frames()
-        return (total, zip(locations, orignal, process))
+        return (total, zip(locations, original, process))
 
     def __get_faces(self, image, face_locations):
         '''Get the faces from a set of locations'''
         for location in face_locations:
-            face = self.__extract(image, location, self.__ps.scale)
+            face = self.__extract(image, location, self.__ps.scale, self.__ps.extract_size)
             yield face
 
-    def __save_extract(self, face, file_path):
+    def __save_extract(self, image, file_path):
         '''Saves the face to file_path at the set extract size'''
-        image = cv2.resize(face,
-                           (self.__ps.extract_size, self.__ps.extract_size),
-                           interpolation=cv2.INTER_AREA)
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
         if self.__ps.display_output:
@@ -175,20 +190,13 @@ class FaceGrab(object):
                 break
             yield (frame, frame_number)
 
-    def __draw_detection(self, frame, locations):
-        '''draws the process frames with face detection locations'''
-        #frame = self.__process_frames[idx][:, :, ::-1] #BGR->RGB
-        for (top, right, bottom, left) in locations:
-            cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
-        cv2.imshow('process', frame)
-        cv2.waitKey(delay=1)
-
     def __do_batch(self, batch_count, output_path):
         '''Handles each batch of detected faces, performing recognition on each'''
         total, results = self.__get_location_frames()
-        if not total:
-            return
         with tqdm(total=total, unit='checks') as progress:
+            progress.set_description(f'Batch #{batch_count}')
+            if not total:
+                return
             extracted = 0
             # each set of face locations in the batch
             for locations, original, processed in results:
@@ -217,11 +225,11 @@ class FaceGrab(object):
             for frame, frame_count in self.__get_fame(sequence, total_frames):
                 progress.update(frame_count - progress.n)
                 progress.set_description(f'Total (extracted {self.__total_extracted})')
-                pf = self.__downsample(frame, self.__ps.scale)
-                self.__process_frames.append(pf)
+                process_frame = self.__downsample(frame, self.__ps.scale)
+                self.__process_frames.append(process_frame)
                 self.__original_frames.append(frame)
                 if self.__ps.display_output:
-                    self.__draw_detection(pf, [])
+                    self.__draw_detection(process_frame, [])
                 if len(self.__process_frames) == self.__ps.batch_size:
                     batch_count += 1
                     self.__do_batch(batch_count, output_path)
@@ -232,7 +240,7 @@ class FaceGrab(object):
             :param str file_path: Path to save file (.npz extension will be added if not present)
         '''
         print(f'Saving {len(self.__reference_encodings)} to {file_path}.npz')
-        # TODO : images? jitter?
+        # TODO : images?  jitter?
         numpy.savez_compressed(file_path, *self.__reference_encodings)
 
     def load(self, file_path):
@@ -287,32 +295,32 @@ if __name__ == '__main__':
                     help='''Path to output directory''')
     # Optional save settings
     AP.add_argument('-sr', '--save_references', type=str,
-                    help='''Save the references in npz format.
+                    help='''Save the references in .npz format.
                     This file can be loaded as a reference avoiding the need
                     to re-encode a set of images each time for the same person''')
     # Optional process settings
     AP.add_argument('-bs', '--batch_size', type=int, default=128, choices=range(2, 128),
-                    metavar="[2-128]",
+                    metavar='[2-128]',
                     help='''How many frames to include in each GPU processing batch.''')
     AP.add_argument('-sf', '--skip_frames', type=int, default=6, choices=range(0, 1000),
-                    metavar="[0-1000]",
+                    metavar='[0-1000]',
                     help='''How many frames to skip e.g. 5 means look at every 6th''')
     AP.add_argument('-xs', '--extract_size', type=int, default=256, choices=range(32, 1024),
-                    metavar="[32-1024]",
+                    metavar='[32-1024]',
                     help='''Size in pixels of extracted face images (n*n).''')
     AP.add_argument('-s', '--scale', type=float, default=0.25, choices=[Range(0.1, 1.0)],
-                    metavar="[0.1-1.0]",
+                    metavar='[0.1-1.0]',
                     help='''Factor to down-sample input by for detection processing.
     If you get too few matches try scaling by half e.g. 0.5''')
     AP.add_argument('-do', '--display_output', action='store_true',
                     help='''Show the detection and extraction images (slows processing).''')
     # Optional recognition settings
     AP.add_argument('-t', '--tolerance', type=float, default=0.6, choices=[Range(0.1, 1.0)],
-                    metavar="[0.1-1.0]",
+                    metavar='[0.1-1.0]',
                     help='''How much "distance" between faces to consider it a match.
     Lower is stricter. 0.6 is typical best performance''')
     AP.add_argument('-j', '--jitter', type=int, default=5, choices=range(1, 1000),
-                    metavar="[1-1000]",
+                    metavar='[1-1000]',
                     help='''How many times to re-sample images when
     calculating recognition encodings. Higher is more accurate, but slower.
     (100 is 100 times slower than 1).''')
