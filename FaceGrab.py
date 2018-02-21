@@ -19,8 +19,8 @@ class RecognitionSettings(NamedTuple):
         :param float tolerance: How much "distance" between faces to consider it a match.
         :param int jitter: How many times to re-sample images when calculating encodings.
     '''
-    tolerance : float = .6
-    jitter : int = 10
+    tolerance: float = .6
+    jitter: int = 10
 
 class ProcessSettings(NamedTuple):
     '''
@@ -31,11 +31,11 @@ class ProcessSettings(NamedTuple):
         :param float scale: Amount to down-sample input by for detection processing.
         :param bool display_output: Show the detection and extraction images in process.
     '''
-    batch_size : int = 128
-    skip_frames : int = 6
-    extract_size : int = 256
-    scale : float = .25
-    display_output : bool = False
+    batch_size: int = 128
+    skip_frames: int = 6
+    extract_size: int = 256
+    scale: float = .25
+    display_output: bool = False
 
 class FaceGrab(object):
 
@@ -62,7 +62,7 @@ class FaceGrab(object):
         self.__check_reference(reference)
 
     _MEAN_FACE_LANDMARKS = np.asarray([
-        [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02], 
+        [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02],
         [2.90770e-01, 3.44891e-02], [3.93397e-01, 7.73906e-02], [5.86856e-01, 7.73906e-02],
         [6.89483e-01, 3.44891e-02], [7.99124e-01, 1.87482e-02], [9.04991e-01, 3.89150e-02],
         [9.80040e-01, 1.06454e-01], [4.90127e-01, 2.03352e-01], [4.90127e-01, 3.07009e-01],
@@ -132,7 +132,7 @@ class FaceGrab(object):
         '''
         N, m = face.shape
         mx = face.mean(axis=0)
-        my = np.average(cls._MEAN_FACE_LANDMARKS, 0) 
+        my = np.average(cls._MEAN_FACE_LANDMARKS, 0)
         dx = face - mx
         dy = cls._MEAN_FACE_LANDMARKS - my #hard-code T?
         A = np.dot(dy.T, dx) / N
