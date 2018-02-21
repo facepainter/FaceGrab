@@ -1,5 +1,5 @@
 '''
-Extract a known face from a video.
+Extract aligned images of a known face from a video or image sequence.
 
 Uses a combination of a deep learning CNN model to batch detect faces
 in video frames, or a sequence of images, in GPU with CUDA and HoG to compare
