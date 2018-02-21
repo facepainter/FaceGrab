@@ -255,7 +255,6 @@ class FaceGrab(object):
             :param str file_path: Path to save file (.npz extension will be added if not present)
         '''
         print(f'Saving {len(self.__reference_encodings)} to {file_path}.npz')
-        # TODO : images?  jitter?
         np.savez_compressed(file_path, *self.__reference_encodings)
 
     def load(self, file_path):
@@ -282,6 +281,9 @@ class FaceGrab(object):
         print(f'Processing {input_path} ({self.__ps.scale} scale)')
         print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance')
         print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
+        # prevent v.intermittent
+        # 'tqdm' object has no attribute 'miniters'
+        tqdm.monitor_interval = 0
         self.__batch_builder(output_path, sequence, frames)
 
 def _umeyama(face):
