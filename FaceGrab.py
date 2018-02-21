@@ -19,8 +19,8 @@ class RecognitionSettings(NamedTuple):
         :param float tolerance: How much "distance" between faces to consider it a match.
         :param int jitter: How many times to re-sample images when calculating encodings.
     '''
-    tolerance: float = .6
-    jitter: int = 10
+    tolerance : float = .6
+    jitter : int = 10
 
 class ProcessSettings(NamedTuple):
     '''
@@ -31,11 +31,11 @@ class ProcessSettings(NamedTuple):
         :param float scale: Amount to down-sample input by for detection processing.
         :param bool display_output: Show the detection and extraction images in process.
     '''
-    batch_size: int = 128
-    skip_frames: int = 6
-    extract_size: int = 256
-    scale: float = .25
-    display_output: bool = False
+    batch_size : int = 128
+    skip_frames : int = 6
+    extract_size : int = 256
+    scale : float = .25
+    display_output : bool = False
 
 class DetectedFace(object):
     '''Image wrapper for align transforms'''
@@ -45,7 +45,7 @@ class DetectedFace(object):
 
     def transform(self, size, padding=0):
         '''Warps the face image based on a hard-coded mean face value matrix'''
-        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]), _LANDMARKS_2D)[0:2]
+        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]), MEAN_FACE_LANDMARKS)[0:2]
         mat = mat * (size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(self.image, mat, (size, size))
@@ -106,7 +106,7 @@ class FaceGrab(object):
                               (size, size),
                               interpolation=cv2.INTER_AREA)
         # TODO : would be much faster to always crop for recognition
-        # and transform on save - however recognition rate against 
+        # and transform on save - however recognition rate against
         # untransformed faces is much lower...
         return DetectedFace(image, landmarks[0]).transform(size, 48)
 
@@ -320,25 +320,24 @@ def _umeyama(X, Y):
     T[:m, :m] *= scale
     return T
 
-_MEAN_FACE_X = np.array([
-    0.000213256, 0.0752622, 0.18113, 0.29077, 0.393397, 0.586856, 0.689483, 0.799124,
-    0.904991, 0.98004, 0.490127, 0.490127, 0.490127, 0.490127, 0.36688, 0.426036,
-    0.490127, 0.554217, 0.613373, 0.121737, 0.187122, 0.265825, 0.334606, 0.260918,
-    0.182743, 0.645647, 0.714428, 0.793132, 0.858516, 0.79751, 0.719335, 0.254149,
-    0.340985, 0.428858, 0.490127, 0.551395, 0.639268, 0.726104, 0.642159, 0.556721,
-    0.490127, 0.423532, 0.338094, 0.290379, 0.428096, 0.490127, 0.552157, 0.689874,
-    0.553364, 0.490127, 0.42689])
-
-_MEAN_FACE_Y = np.array([
-    0.106454, 0.038915, 0.0187482, 0.0344891, 0.0773906, 0.0773906, 0.0344891,
-    0.0187482, 0.038915, 0.106454, 0.203352, 0.307009, 0.409805, 0.515625, 0.587326,
-    0.609345, 0.628106, 0.609345, 0.587326, 0.216423, 0.178758, 0.179852, 0.231733,
-    0.245099, 0.244077, 0.231733, 0.179852, 0.178758, 0.216423, 0.244077, 0.245099,
-    0.780233, 0.745405, 0.727388, 0.742578, 0.727388, 0.745405, 0.780233, 0.864805,
-    0.902192, 0.909281, 0.902192, 0.864805, 0.784792, 0.778746, 0.785343, 0.778746,
-    0.784792, 0.824182, 0.831803, 0.824182])
-
-_LANDMARKS_2D = np.stack([_MEAN_FACE_X, _MEAN_FACE_Y], axis=1)
+MEAN_FACE_LANDMARKS = np.asarray([
+    [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02], 
+    [2.90770e-01, 3.44891e-02], [3.93397e-01, 7.73906e-02], [5.86856e-01, 7.73906e-02],
+    [6.89483e-01, 3.44891e-02], [7.99124e-01, 1.87482e-02], [9.04991e-01, 3.89150e-02],
+    [9.80040e-01, 1.06454e-01], [4.90127e-01, 2.03352e-01], [4.90127e-01, 3.07009e-01],
+    [4.90127e-01, 4.09805e-01], [4.90127e-01, 5.15625e-01], [3.66880e-01, 5.87326e-01],
+    [4.26036e-01, 6.09345e-01], [4.90127e-01, 6.28106e-01], [5.54217e-01, 6.09345e-01],
+    [6.13373e-01, 5.87326e-01], [1.21737e-01, 2.16423e-01], [1.87122e-01, 1.78758e-01],
+    [2.65825e-01, 1.79852e-01], [3.34606e-01, 2.31733e-01], [2.60918e-01, 2.45099e-01],
+    [1.82743e-01, 2.44077e-01], [6.45647e-01, 2.31733e-01], [7.14428e-01, 1.79852e-01],
+    [7.93132e-01, 1.78758e-01], [8.58516e-01, 2.16423e-01], [7.97510e-01, 2.44077e-01],
+    [7.19335e-01, 2.45099e-01], [2.54149e-01, 7.80233e-01], [3.40985e-01, 7.45405e-01],
+    [4.28858e-01, 7.27388e-01], [4.90127e-01, 7.42578e-01], [5.51395e-01, 7.27388e-01],
+    [6.39268e-01, 7.45405e-01], [7.26104e-01, 7.80233e-01], [6.42159e-01, 8.64805e-01],
+    [5.56721e-01, 9.02192e-01], [4.90127e-01, 9.09281e-01], [4.23532e-01, 9.02192e-01],
+    [3.38094e-01, 8.64805e-01], [2.90379e-01, 7.84792e-01], [4.28096e-01, 7.78746e-01],
+    [4.90127e-01, 7.85343e-01], [5.52157e-01, 7.78746e-01], [6.89874e-01, 7.84792e-01],
+    [5.53364e-01, 8.24182e-01], [4.90127e-01, 8.31803e-01], [4.26890e-01, 8.24182e-01]])
 
 if __name__ == '__main__':
     import argparse
