@@ -9,11 +9,9 @@ from os import path, listdir
 from typing import NamedTuple
 
 import cv2
-import numpy
-import face_recognition
+import numpy as np
+import face_recognition as fr
 from tqdm import tqdm
-
-from align import DetectedFace
 
 class RecognitionSettings(NamedTuple):
     '''
@@ -39,6 +37,23 @@ class ProcessSettings(NamedTuple):
     scale: float = .25
     display_output: bool = False
 
+class DetectedFace(object):
+    '''Image wrapper for align transforms'''
+    def __init__(self, image, landmarks):
+        self.image = image
+        self.landmarks = landmarks
+
+    def transform(self, size, padding=0):
+        '''Warps the face image based on a hard-coded mean face value matrix'''
+        mat = _umeyama(np.array(self.__landmarks_xy()[17:]), _LANDMARKS_2D)[0:2]
+        mat = mat * (size - 2 * padding)
+        mat[:, 2] += padding
+        return cv2.warpAffine(self.image, mat, (size, size))
+
+    def __landmarks_xy(self):
+        '''Raw landmarks to Cartesian'''
+        return [(p.x, p.y) for p in self.landmarks.parts()]
+
 class FaceGrab(object):
     '''
     It sure grabs faces! (tm)
@@ -52,10 +67,10 @@ class FaceGrab(object):
         if process is None:
             process = ProcessSettings()
         skip_sanity = 1 if process.skip_frames <= 0 else process.skip_frames + 1
-        self.__ps = process._replace(batch_size=numpy.clip(process.batch_size, 2, 128),
+        self.__ps = process._replace(batch_size=np.clip(process.batch_size, 2, 128),
                                      skip_frames=skip_sanity,
-                                     scale=numpy.clip(process.scale, 0, 1.0))
-        self.__rs = recognition._replace(tolerance=numpy.clip(recognition.tolerance, 0.1, 1))
+                                     scale=np.clip(process.scale, 0, 1.0))
+        self.__rs = recognition._replace(tolerance=np.clip(recognition.tolerance, 0.1, 1))
         self.__process_frames = []
         self.__original_frames = []
         self.__reference_encodings = []
@@ -83,18 +98,16 @@ class FaceGrab(object):
         factor = int(1 / scale) if scale > 0 else 1
         location_scaled = tuple(factor * n for n in location)
         top, right, bottom, left = location_scaled
-        # protected member access
-        landmarks = face_recognition.api._raw_face_landmarks(image, [location_scaled])
+        # protected member access - eek!
+        landmarks = fr.api._raw_face_landmarks(image, [location_scaled])
         if not any(landmarks):
             print('Warning landmarks not detected - falling back to crop')
             return cv2.resize(image[top:bottom, left:right],
                               (size, size),
                               interpolation=cv2.INTER_AREA)
-        # TODO : pass padding?
-        # Also would be much faster to always crop for recognition 
-        # then only do the transform on faces we are saving - however
-        # the recognition rate against untransformed faces is much lower
-        # need to test this more and decide default behavior 
+        # TODO : would be much faster to always crop for recognition
+        # and transform on save - however recognition rate against 
+        # untransformed faces is much lower...
         return DetectedFace(image, landmarks[0]).transform(size, 48)
 
     @staticmethod
@@ -133,9 +146,9 @@ class FaceGrab(object):
 
     def __parse_encoding(self, image_path):
         '''Adds the first face encoding in an image to the reference encodings'''
-        image = face_recognition.load_image_file(image_path)
-        encoding = face_recognition.face_encodings(image, None, self.__rs.jitter)
-        if numpy.any(encoding):
+        image = fr.load_image_file(image_path)
+        encoding = fr.face_encodings(image, None, self.__rs.jitter)
+        if np.any(encoding):
             self.__reference_encodings.append(encoding[0])
 
     def __recognise(self, face):
@@ -144,11 +157,11 @@ class FaceGrab(object):
         If no reference encodings are present any face is classed as recognised.'''
         if not self.reference_count:
             return True
-        encoding = face_recognition.face_encodings(face, None, self.__rs.jitter)
-        if numpy.any(encoding):
-            return numpy.any(face_recognition.compare_faces(self.__reference_encodings,
-                                                            encoding[0],
-                                                            self.__rs.tolerance))
+        encoding = fr.face_encodings(face, None, self.__rs.jitter)
+        if np.any(encoding):
+            return np.any(fr.compare_faces(self.__reference_encodings,
+                                           encoding[0],
+                                           self.__rs.tolerance))
         return False
 
     def __reset_frames(self):
@@ -157,15 +170,13 @@ class FaceGrab(object):
 
     def __get_location_frames(self):
         '''Get the total faces detected and f.indexed locations/original/process based on hits.'''
-        batch = face_recognition.batch_face_locations(self.__process_frames,
-                                                      1,
-                                                      self.__ps.batch_size)
-        hits = numpy.nonzero(batch)[0] # fancy
-        locations = numpy.asarray(batch)[hits]
-        original = numpy.asarray(self.__original_frames)[hits]
-        process = numpy.asarray(self.__process_frames)[hits]
+        batch = fr.batch_face_locations(self.__process_frames, 1, self.__ps.batch_size)
+        hits = np.nonzero(batch)[0] # fancy
+        locations = np.asarray(batch)[hits]
+        original = np.asarray(self.__original_frames)[hits]
+        process = np.asarray(self.__process_frames)[hits]
         total = sum(len(x) for x in locations)
-        self.__reset_frames()
+
         return (total, zip(locations, original, process))
 
     def __get_faces(self, image, face_locations):
@@ -184,9 +195,8 @@ class FaceGrab(object):
 
     def __get_fame(self, sequence, total_frames):
         '''Grabs, decodes and returns the next frame and number.'''
-        # skip *then* read
         for frame_number in range(total_frames):
-            if self.__skip_frame(frame_number):
+            if self.__skip_frame(frame_number): # skip *then* read
                 continue
             sequence.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             ret, frame = sequence.read()
@@ -197,6 +207,7 @@ class FaceGrab(object):
     def __do_batch(self, batch_count, output_path):
         '''Handles each batch of detected faces, performing recognition on each'''
         total, results = self.__get_location_frames()
+        self.__reset_frames()
         with tqdm(total=total, unit='checks') as progress:
             progress.set_description(f'Batch #{batch_count}')
             if not total:
@@ -245,7 +256,7 @@ class FaceGrab(object):
         '''
         print(f'Saving {len(self.__reference_encodings)} to {file_path}.npz')
         # TODO : images?  jitter?
-        numpy.savez_compressed(file_path, *self.__reference_encodings)
+        np.savez_compressed(file_path, *self.__reference_encodings)
 
     def load(self, file_path):
         '''
@@ -253,7 +264,7 @@ class FaceGrab(object):
         NB: Overwrites any existing encodings
             :param str file_path: Path to a .npz file generated from the save method
         '''
-        npzfile = numpy.load(file_path)
+        npzfile = np.load(file_path)
         print(f'Loading {len(npzfile.files)} from {file_path}')
         self.__reference_encodings = [npzfile[key] for key in npzfile]
 
@@ -272,6 +283,61 @@ class FaceGrab(object):
         print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance')
         print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
         self.__batch_builder(output_path, sequence, frames)
+
+def _umeyama(X, Y):
+    '''
+    N-D similarity transform with scaling.
+    Adatped from:
+    https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
+    '''
+    N, m = X.shape
+    mx = X.mean(axis=0)
+    my = Y.mean(axis=0)
+    dx = X - mx # N x m
+    dy = Y - my # N x m
+    A = np.dot(dy.T, dx) / N
+    d = np.ones((m,), dtype=np.double)
+    if np.linalg.det(A) < 0:
+        d[m - 1] = -1
+    T = np.eye(m + 1, dtype=np.double)
+    U, S, V = np.linalg.svd(A)
+    rank = np.linalg.matrix_rank(A) #covariance
+    if rank == 0:
+        return np.nan * T
+    elif rank == m - 1:
+        if np.linalg.det(U) * np.linalg.det(V) > 0:
+            T[:m, :m] = np.dot(U, V)
+        else:
+            s = d[m - 1]
+            d[m - 1] = -1
+            T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
+            d[m - 1] = s
+    else:
+        T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
+    scale = 1.0 / dx.var(axis=0).sum() * np.dot(S, d)
+    T[:m, m] = my - scale * np.dot(T[:m, :m], mx.T)
+    T[:m, :m] *= scale
+    return T
+
+_MEAN_FACE_X = np.array([
+    0.000213256, 0.0752622, 0.18113, 0.29077, 0.393397, 0.586856, 0.689483, 0.799124,
+    0.904991, 0.98004, 0.490127, 0.490127, 0.490127, 0.490127, 0.36688, 0.426036,
+    0.490127, 0.554217, 0.613373, 0.121737, 0.187122, 0.265825, 0.334606, 0.260918,
+    0.182743, 0.645647, 0.714428, 0.793132, 0.858516, 0.79751, 0.719335, 0.254149,
+    0.340985, 0.428858, 0.490127, 0.551395, 0.639268, 0.726104, 0.642159, 0.556721,
+    0.490127, 0.423532, 0.338094, 0.290379, 0.428096, 0.490127, 0.552157, 0.689874,
+    0.553364, 0.490127, 0.42689])
+
+_MEAN_FACE_Y = np.array([
+    0.106454, 0.038915, 0.0187482, 0.0344891, 0.0773906, 0.0773906, 0.0344891,
+    0.0187482, 0.038915, 0.106454, 0.203352, 0.307009, 0.409805, 0.515625, 0.587326,
+    0.609345, 0.628106, 0.609345, 0.587326, 0.216423, 0.178758, 0.179852, 0.231733,
+    0.245099, 0.244077, 0.231733, 0.179852, 0.178758, 0.216423, 0.244077, 0.245099,
+    0.780233, 0.745405, 0.727388, 0.742578, 0.727388, 0.745405, 0.780233, 0.864805,
+    0.902192, 0.909281, 0.902192, 0.864805, 0.784792, 0.778746, 0.785343, 0.778746,
+    0.784792, 0.824182, 0.831803, 0.824182])
+
+_LANDMARKS_2D = np.stack([_MEAN_FACE_X, _MEAN_FACE_Y], axis=1)
 
 if __name__ == '__main__':
     import argparse
