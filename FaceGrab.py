@@ -45,7 +45,7 @@ class DetectedFace(object):
 
     def transform(self, size, padding=0):
         '''Warps the face image based on a hard-coded mean face value matrix'''
-        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]), MEAN_FACE_LANDMARKS)[0:2]
+        mat = _umeyama(np.asarray(self.__landmarks_xy()[17:]))[0:2]
         mat = mat * (size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(self.image, mat, (size, size))
@@ -284,18 +284,18 @@ class FaceGrab(object):
         print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
         self.__batch_builder(output_path, sequence, frames)
 
-def _umeyama(X, Y):
+def _umeyama(face):
     '''
     N-D similarity transform with scaling.
     Adapted from:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
     http://web.stanford.edu/class/cs273/refs/umeyama.pdf
     '''
-    N, m = X.shape
-    mx = X.mean(axis=0)
-    my = Y.mean(axis=0)
-    dx = X - mx # N x m
-    dy = Y - my # N x m
+    N, m = face.shape
+    mx = face.mean(axis=0)
+    my = MEAN_FACE_LANDMARKS.mean(axis=0)
+    dx = face - mx # N x m
+    dy = MEAN_FACE_LANDMARKS - my # N x m
     A = np.dot(dy.T, dx) / N
     d = np.ones((m,), dtype=np.double)
     if np.linalg.det(A) < 0:
