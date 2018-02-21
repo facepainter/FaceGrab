@@ -289,6 +289,7 @@ def _umeyama(X, Y):
     N-D similarity transform with scaling.
     Adatped from:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
+    http://web.stanford.edu/class/cs273/refs/umeyama.pdf
     '''
     N, m = X.shape
     mx = X.mean(axis=0)
