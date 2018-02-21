@@ -163,7 +163,6 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 - dlib - https://github.com/davisking/dlib.git compiled with CUDA (and preferably AVX) see notes.
 - Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
 
-YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 :(
-
+YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 on WindBlows :( In linux not a problem - in short - go for the latest verions you can build against :)
 
 
