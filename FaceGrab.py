@@ -238,7 +238,6 @@ class FaceGrab(object):
         total, results = self.__get_location_frames()
         self.__reset_frames()
         extracted = 0
-
         with tqdm(total=total, unit='checks') as progress:
             progress.set_description(f'Batch #{batch_count}')
             if not total:
@@ -297,8 +296,8 @@ class FaceGrab(object):
                 matches.append(fr.compare_faces(group, encoding, self.__rs.tolerance))
                 distances.append(fr.face_distance(group, encoding))
         print(f'Consistancy {round(np.average(matches) * 100, 2)}%')
-        print(f'Distance Avg. {np.average(distances)}')
-        print(f'Distance std {np.std(distances)}')
+        print(f'Dist. Avg. {round(np.average(distances), 3)}')
+        print(f'Dist. SD. {round(np.std(distances), 3)}')
 
     def save(self, file_path):
         '''
