@@ -99,10 +99,10 @@ class FaceGrab(object):
         dx = face - mean_face
         d = np.ones((2,))
         T = np.identity(3)
-        U, s, V = np.linalg.svd(np.dot(cls._MEAN_FACE_TRANSPOSED, dx) / 51)
-        T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
-        scale = 1.0 / dx.var(axis=0).sum() * np.dot(s, d)
-        T[:2, 2] = mean_reference - scale * np.dot(T[:2, :2], mean_face.T)
+        U, s, V = np.linalg.svd(cls._MEAN_FACE_TRANSPOSED @ dx / 51)
+        T[:2, :2] = U @ np.diag(d) @ V
+        scale = 1.0 / dx.var(0).sum() * s @ d
+        T[:2, 2] = mean_reference - scale * T[:2, :2] @ mean_face.T
         T[:2, :2] *= scale
         return T
 
@@ -158,9 +158,8 @@ class FaceGrab(object):
         if path.isfile(reference):
             if reference.endswith('.npz'):
                 self.load(reference)
-                return
-            self.__parse_encoding(reference)
-            return
+            else:
+                self.__parse_encoding(reference)
         raise ValueError(f'Invalid reference: {reference}')
 
     def __parse_encoding(self, image_path):
