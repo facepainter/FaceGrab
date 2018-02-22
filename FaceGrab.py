@@ -133,12 +133,20 @@ class FaceGrab(object):
         for (top, right, bottom, left) in locations:
             cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
         cv2.imshow('process', frame[:, :, ::-1]) #BGR->RGB
-        cv2.waitKey(delay=1)
+        cv2.waitKey(1)
 
-    def __transform(self, image, landmarks, padding=0):
+    @staticmethod
+    def __landmark_points(image, location=None):
+        '''Face landmarks as coordinates (without the chin!)'''
+        # NB: protected-access - eek!
+        landmarks = fr.api._raw_face_landmarks(image, location)
+        if np.any(landmarks):
+            return [(p.x, p.y) for p in landmarks[0].parts()][17:]
+        return []
+
+    def __transform(self, image, coordinates, padding=0):
         '''Affine transform between image landmarks and "mean face"'''
-        coordinates = [(p.x, p.y) for p in landmarks.parts()]
-        mat = self.__get_matrix(np.asarray(coordinates[17:]))[0:2]
+        mat = self.__get_matrix(np.asarray(coordinates))[0:2]
         mat = mat * (self.__ps.extract_size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LANCZOS4)
@@ -175,10 +183,8 @@ class FaceGrab(object):
     def __recognise(self, face):
         '''Checks a given face against any known reference encodings.
         Returns total number of reference encodings below or equal to tolerance.
-        Recognised returns a number between 1 and total number of reference encodings.
-        NOT recognised returns 0
-        NO reference encodings are loaded returns -1
-        NO face encoding can be found returns 0'''
+        Returns int in range [1, reference_count] if recognised.
+        Returns 0 if not recognised/no encoding, -1 if matching all'''
         if not self.reference_count:
             return -1
         encoding = fr.face_encodings(face, None, self.__rs.jitter)
@@ -219,13 +225,15 @@ class FaceGrab(object):
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
         if self.__ps.display_output:
+            for point in self.__landmark_points(image):
+                cv2.circle(image, point, 1, (0, 0, 255), -1)
             cv2.imshow('extracted', image)
-            cv2.waitKey(delay=1)
+            cv2.waitKey(1)
 
     def __get_fame(self, sequence, total_frames):
         '''Grabs, decodes and returns the next frame and number.'''
         for frame_number in range(total_frames):
-            if self.__skip_frame(frame_number): # skip *then* read
+            if self.__skip_frame(frame_number):
                 continue
             sequence.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             ret, frame = sequence.read()
@@ -251,10 +259,9 @@ class FaceGrab(object):
                     recognised = self.__recognise(face)
                     if recognised:
                         extracted += 1
-                        # NB: protected-access - eek!
-                        landmarks = fr.api._raw_face_landmarks(original, [location_scaled])
-                        if any(landmarks):
-                            face = self.__transform(original, landmarks[0], self.__extract_pad)
+                        points = self.__landmark_points(original, [location_scaled])
+                        if np.any(points):
+                            face = self.__transform(original, points, self.__extract_pad)
                         name = path.join(output_path, f'{recognised}-{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
                         # v.unlikely to have target multiple times
@@ -332,6 +339,9 @@ class FaceGrab(object):
         print(f'References {self.reference_count} (tolerance:{self.__rs.tolerance})')
         print(f'Checking {work}/{frame_count} frames in {batches} batches of {self.__ps.batch_size}')
         self.__batch_builder(output_path, sequence, frame_count)
+        if self.__ps.display_output:
+            cv2.destroyWindow('process')
+            cv2.destroyWindow('extract')
 
 if __name__ == '__main__':
     import argparse
