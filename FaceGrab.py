@@ -62,60 +62,59 @@ class FaceGrab(object):
         self.__extract_dim = (self.__ps.extract_size, self.__ps.extract_size)
         self.__check_reference(reference)
 
-    _MEAN_FACE_LANDMARKS = np.asarray([
-        [2.13256e-04, 1.06454e-01], [7.52622e-02, 3.89150e-02], [1.81130e-01, 1.87482e-02],
-        [2.90770e-01, 3.44891e-02], [3.93397e-01, 7.73906e-02], [5.86856e-01, 7.73906e-02],
-        [6.89483e-01, 3.44891e-02], [7.99124e-01, 1.87482e-02], [9.04991e-01, 3.89150e-02],
-        [9.80040e-01, 1.06454e-01], [4.90127e-01, 2.03352e-01], [4.90127e-01, 3.07009e-01],
-        [4.90127e-01, 4.09805e-01], [4.90127e-01, 5.15625e-01], [3.66880e-01, 5.87326e-01],
-        [4.26036e-01, 6.09345e-01], [4.90127e-01, 6.28106e-01], [5.54217e-01, 6.09345e-01],
-        [6.13373e-01, 5.87326e-01], [1.21737e-01, 2.16423e-01], [1.87122e-01, 1.78758e-01],
-        [2.65825e-01, 1.79852e-01], [3.34606e-01, 2.31733e-01], [2.60918e-01, 2.45099e-01],
-        [1.82743e-01, 2.44077e-01], [6.45647e-01, 2.31733e-01], [7.14428e-01, 1.79852e-01],
-        [7.93132e-01, 1.78758e-01], [8.58516e-01, 2.16423e-01], [7.97510e-01, 2.44077e-01],
-        [7.19335e-01, 2.45099e-01], [2.54149e-01, 7.80233e-01], [3.40985e-01, 7.45405e-01],
-        [4.28858e-01, 7.27388e-01], [4.90127e-01, 7.42578e-01], [5.51395e-01, 7.27388e-01],
-        [6.39268e-01, 7.45405e-01], [7.26104e-01, 7.80233e-01], [6.42159e-01, 8.64805e-01],
-        [5.56721e-01, 9.02192e-01], [4.90127e-01, 9.09281e-01], [4.23532e-01, 9.02192e-01],
-        [3.38094e-01, 8.64805e-01], [2.90379e-01, 7.84792e-01], [4.28096e-01, 7.78746e-01],
-        [4.90127e-01, 7.85343e-01], [5.52157e-01, 7.78746e-01], [6.89874e-01, 7.84792e-01],
-        [5.53364e-01, 8.24182e-01], [4.90127e-01, 8.31803e-01], [4.26890e-01, 8.24182e-01]])
+    _MEAN_FACE_TRANSPOSED = np.asarray([
+        [-4.89913404e-01, -4.14864460e-01, -3.08996660e-01, -1.99356660e-01, -9.67296600e-02, 9.67293400e-02,
+        1.99356340e-01, 3.08997340e-01, 4.14864340e-01, 4.89913340e-01, 3.40000000e-07, 3.40000000e-07,
+        3.40000000e-07, 3.40000000e-07, -1.23246660e-01,-6.40906600e-02, 3.40000000e-07, 6.40903400e-02,
+        1.23246340e-01, -3.68389660e-01, -3.03004660e-01,-2.24301660e-01, -1.55520660e-01, -2.29208660e-01,
+        -3.07383660e-01, 1.55520340e-01, 2.24301340e-01, 3.03005340e-01, 3.68389340e-01, 3.07383340e-01,
+        2.29208340e-01, -2.35977660e-01, -1.49141660e-01,-6.12686600e-02, 3.40000000e-07, 6.12683400e-02, 
+        1.49141340e-01, 2.35977340e-01, 1.52032340e-01, 6.65943400e-02, 3.40000000e-07, -6.65946600e-02,
+        -1.52032660e-01, -1.99747660e-01, -6.20306600e-02, 3.40000000e-07, 6.20303400e-02, 1.99747340e-01,
+        6.32373400e-02, 3.40000000e-07, -6.32366600e-02],
+        [-3.57969680e-01, -4.25508680e-01, -4.45675480e-01,-4.29934580e-01, -3.87033080e-01, -3.87033080e-01,
+        -4.29934580e-01, -4.45675480e-01, -4.25508680e-01,-3.57969680e-01, -2.61071680e-01, -1.57414680e-01,
+        -5.46186800e-02, 5.12013200e-02, 1.22902320e-01, 1.44921320e-01, 1.63682320e-01, 1.44921320e-01,
+        1.22902320e-01, -2.48000680e-01, -2.85665680e-01,-2.84571680e-01, -2.32690680e-01, -2.19324680e-01,
+        -2.20346680e-01, -2.32690680e-01, -2.84571680e-01,-2.85665680e-01, -2.48000680e-01, -2.20346680e-01,
+        -2.19324680e-01, 3.15809320e-01, 2.80981320e-01, 2.62964320e-01, 2.78154320e-01, 2.62964320e-01,
+        2.80981320e-01, 3.15809320e-01, 4.00381320e-01, 4.37768320e-01, 4.44857320e-01, 4.37768320e-01,
+        4.00381320e-01, 3.20368320e-01, 3.14322320e-01, 3.20919320e-01, 3.14322320e-01, 3.20368320e-01,
+        3.59758320e-01, 3.67379320e-01, 3.59758320e-01]])
 
     @classmethod
     def __umeyama(cls, face):
         '''
-        N-D similarity transform with scaling.
+        N-D similarity transform with scaling between face and mean face values.
         Adapted from:
         https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
         http://web.stanford.edu/class/cs273/refs/umeyama.pdf
         '''
-        N, m = face.shape
         mx = face.mean(axis=0)
-        my = np.average(cls._MEAN_FACE_LANDMARKS, axis=0)
+        my = np.asarray([0.49012666, 0.46442368])
         dx = face - mx
-        dy = cls._MEAN_FACE_LANDMARKS - my
-        A = np.dot(dy.T, dx) / N
-        d = np.ones((m,), dtype=np.double)
+        A = np.dot(cls._MEAN_FACE_TRANSPOSED, dx) / 51
+        d = np.ones((2,), dtype=np.double)
         if np.linalg.det(A) < 0:
-            d[m - 1] = -1
-        T = np.eye(m + 1, dtype=np.double)
+            d[1] = -1
+        T = np.eye(3, dtype=np.double)
         U, S, V = np.linalg.svd(A)
         rank = np.linalg.matrix_rank(A) #covariance
         if rank == 0:
             return np.nan * T
-        elif rank == m - 1:
+        elif rank == 1:
             if np.linalg.det(U) * np.linalg.det(V) > 0:
-                T[:m, :m] = np.dot(U, V)
+                T[:2, :2] = np.dot(U, V)
             else:
-                s = d[m - 1]
-                d[m - 1] = -1
-                T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
-                d[m - 1] = s
+                s = d[1]
+                d[1] = -1
+                T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
+                d[1] = s
         else:
-            T[:m, :m] = np.dot(U, np.dot(np.diag(d), V))
+            T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
         scale = 1.0 / dx.var(axis=0).sum() * np.dot(S, d)
-        T[:m, m] = my - scale * np.dot(T[:m, :m], mx.T)
-        T[:m, :m] *= scale
+        T[:2, 2] = my - scale * np.dot(T[:2, :2], mx.T)
+        T[:2, :2] *= scale
         return T
 
     @property
@@ -318,10 +317,10 @@ class FaceGrab(object):
         frame_count = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
         work = int(frame_count / self.__ps.skip_frames)
         batches = int(work / self.__ps.batch_size)
-        self.__batch_builder(output_path, sequence, frame_count)
         print(f'Processing {input_path} ({self.__ps.scale} scale)')
         print(f'References {self.reference_count} ({self.__rs.tolerance} tolerance)')
         print(f'Checking {work}/{frame_count} in {batches} batches of {self.__ps.batch_size}')
+        self.__batch_builder(output_path, sequence, frame_count)
 
 if __name__ == '__main__':
     import argparse
