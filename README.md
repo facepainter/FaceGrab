@@ -126,7 +126,26 @@ Also If you want to ensure you have recognition encodings before you begin...
 FG = FaceGrab('./images/nick-cage-reference')
 if FG.reference_count:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
-```
+``
+
+## Output details
+
+tl;dr Sort the output images by name
+
+Any faces detected and recognised in the input will be saved in the specified output directory.
+The naming convention is simple but should allow you to quickly sort any false positives in the results.
+
+For example, imagine you have the following frames in your output folder
+
+* `9-345.jpg` - 345 matched 9 references
+* `4-343.jpg` - 343 matched 4 references 
+* `1-276.jpg` - 276 matched 1 reference
+
+Each extracted face has been given a two number name (separated by a hyphen) in the format `X-Y.jpg`
+Where `X` represents the number of matches - i.e. a number between 1 and the total number references and `Y` is a unique extract number. 
+
+This way you can quickly sort the extracted frames to check for false positives in the results - as frames with a low reference match count will have corresponding lower starting numbers.
+
 ## Help!
 
 Stuff that might happen that isn't what you wanted or expected...oh cruel world!
