@@ -90,7 +90,7 @@ class FaceGrab(object):
     @classmethod
     def __get_matrix(cls, face):
         '''
-        2D similarity transform with scaling
+        2D face similarity transform with scaling
         adapted from _umeyama
         https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py#L72
         http://web.stanford.edu/class/cs273/refs/umeyama.pdf
