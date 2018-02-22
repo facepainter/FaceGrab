@@ -59,8 +59,7 @@ class FaceGrab(object):
         self.__reference_encodings = []
         self.__total_extracted = 0
         self.__extract_dim = (self.__ps.extract_size, self.__ps.extract_size)
-        # TODO: prop/arg @18%256=46 
-        self.__extract_pad = int(self.__ps.extract_size / 100 * 18) 
+        self.__extract_pad = int(self.__ps.extract_size / 100 * 18)
         self.__check_reference(reference)
 
     _MEAN_FACE_TRANSPOSED = np.asarray([
@@ -97,12 +96,12 @@ class FaceGrab(object):
         '''
         mean_face = np.average(face, axis=0)
         mean_reference = np.asarray([0.49012666, 0.46442368])
-        dx = face - mean_face
+        mean_delta = face - mean_face
         d = np.ones((2,))
-        mat = np.identity(3)
-        U, s, V = np.linalg.svd(cls._MEAN_FACE_TRANSPOSED @ dx / 51) #Eq.38
-        mat[:2, :2] = U @ np.diag(d) @ V #Eq.39
-        scale = 1.0 / dx.var(0).sum() * s @ d #Eq.41 Eq.42
+        mat = np.eye(2, 3)
+        U, s, V = np.linalg.svd(cls._MEAN_FACE_TRANSPOSED @ mean_delta / 51)
+        mat[:2, :2] = U @ np.diag(d) @ V
+        scale = 1.0 / mean_delta.var(0).sum() * s @ d
         mat[:2, 2] = mean_reference - scale * mat[:2, :2] @ mean_face.T
         mat[:2, :2] *= scale
         return mat
@@ -146,7 +145,7 @@ class FaceGrab(object):
 
     def __transform(self, image, coordinates, padding=0):
         '''Affine transform between image landmarks and "mean face"'''
-        mat = self.__get_matrix(np.asarray(coordinates))[0:2]
+        mat = self.__get_matrix(coordinates)
         mat = mat * (self.__ps.extract_size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LANCZOS4)
@@ -337,7 +336,7 @@ class FaceGrab(object):
         batches = int(work / self.__ps.batch_size)
         print(f'Processing {input_path} (scale:{self.__ps.scale})')
         print(f'References {self.reference_count} (tolerance:{self.__rs.tolerance})')
-        print(f'Checking {work}/{frame_count} frames in {batches} batches of {self.__ps.batch_size}')
+        print(f'Checking {work}/{frame_count} frames ({batches} batches of {self.__ps.batch_size})')
         self.__batch_builder(output_path, sequence, frame_count)
         if self.__ps.display_output:
             cv2.destroyWindow('process')
