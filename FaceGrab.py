@@ -59,6 +59,7 @@ class FaceGrab(object):
         self.__original_frames = []
         self.__reference_encodings = []
         self.__total_extracted = 0
+        self.__extract_dim = (self.__ps.extract_size, self.__ps.extract_size)
         self.__check_reference(reference)
 
     _MEAN_FACE_LANDMARKS = np.asarray([
@@ -80,48 +81,6 @@ class FaceGrab(object):
         [4.90127e-01, 7.85343e-01], [5.52157e-01, 7.78746e-01], [6.89874e-01, 7.84792e-01],
         [5.53364e-01, 8.24182e-01], [4.90127e-01, 8.31803e-01], [4.26890e-01, 8.24182e-01]])
 
-    @property
-    def reference_count(self):
-        '''Total currently loaded reference encodings for recognition'''
-        return len(self.__reference_encodings)
-
-    @staticmethod
-    def __downsample(image, scale):
-        '''Downscale and convert image for faster detection processing'''
-        sampled = cv2.resize(image,
-                             (0, 0),
-                             fx=scale,
-                             fy=scale,
-                             interpolation=cv2.INTER_AREA) if scale > 0 else image
-        return sampled[:, :, ::-1] #RGB->BGR
-
-    @classmethod
-    def __extract(cls, image, location, scale, size):
-        '''Upscale coordinates and extract location from image at the given size'''
-        factor = int(1 / scale) if scale > 0 else 1
-        location_scaled = tuple(factor * n for n in location)
-        top, right, bottom, left = location_scaled
-        # protected member access - eek!
-        landmarks = fr.api._raw_face_landmarks(image, [location_scaled])
-        if not any(landmarks):
-            print('Warning landmarks not detected - falling back to crop')
-            return cv2.resize(image[top:bottom, left:right],
-                              (size, size),
-                              interpolation=cv2.INTER_AREA)
-        # TODO : would be much faster to always crop for recognition
-        # and transform on save - however recognition rate against
-        # untransformed faces is much lower...
-        return cls.__transform(image, landmarks[0], size, 48)
-
-    @classmethod
-    def __transform(cls, image, landmarks, size, padding=0):
-        '''Warps the face based on a hard-coded mean face value matrix'''
-        coordinates = [(p.x, p.y) for p in landmarks.parts()]
-        mat = cls.__umeyama(np.asarray(coordinates[17:]))[0:2]
-        mat = mat * (size - 2 * padding)
-        mat[:, 2] += padding
-        return cv2.warpAffine(image, mat, (size, size))
-
     @classmethod
     def __umeyama(cls, face):
         '''
@@ -132,9 +91,9 @@ class FaceGrab(object):
         '''
         N, m = face.shape
         mx = face.mean(axis=0)
-        my = np.average(cls._MEAN_FACE_LANDMARKS, 0)
+        my = np.average(cls._MEAN_FACE_LANDMARKS, axis=0)
         dx = face - mx
-        dy = cls._MEAN_FACE_LANDMARKS - my #hard-code T?
+        dy = cls._MEAN_FACE_LANDMARKS - my
         A = np.dot(dy.T, dx) / N
         d = np.ones((m,), dtype=np.double)
         if np.linalg.det(A) < 0:
@@ -159,6 +118,21 @@ class FaceGrab(object):
         T[:m, :m] *= scale
         return T
 
+    @property
+    def reference_count(self):
+        '''Total currently loaded reference encodings for recognition'''
+        return len(self.__reference_encodings)
+
+    @staticmethod
+    def __downsample(image, scale):
+        '''Downscale and convert image for faster detection processing'''
+        sampled = cv2.resize(image,
+                             (0, 0),
+                             fx=scale,
+                             fy=scale,
+                             interpolation=cv2.INTER_AREA) if scale > 0 else image
+        return sampled[:, :, ::-1] #RGB->BGR
+
     @staticmethod
     def __file_count(directory):
         '''Returns the number of files in a directory'''
@@ -171,6 +145,14 @@ class FaceGrab(object):
             cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 1)
         cv2.imshow('process', frame[:, :, ::-1]) #BGR->RGB
         cv2.waitKey(delay=1)
+
+    def __transform(self, image, landmarks, padding=0):
+        '''Affine transform between image landmarks and "mean face"'''
+        coordinates = [(p.x, p.y) for p in landmarks.parts()]
+        mat = self.__umeyama(np.asarray(coordinates[17:]))[0:2]
+        mat = mat * (self.__ps.extract_size - 2 * padding)
+        mat[:, 2] += padding
+        return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LINEAR)
 
     def __check_reference(self, reference):
         '''Checks if the reference is a wild-card/directory/file and looks for encodings'''
@@ -202,16 +184,16 @@ class FaceGrab(object):
 
     def __recognise(self, face):
         '''Checks a given face against any known reference encodings.
-        If face is within the tolerance of any reference it is classed as recognised.
-        If no reference encodings are present any face is classed as recognised.'''
+        Returns total number of reference encodings below or equal to tolerance.
+        If no reference encodings are loaded returns -1
+        If no face encoding can be found returns 0'''
         if not self.reference_count:
-            return True
+            return -1
         encoding = fr.face_encodings(face, None, self.__rs.jitter)
-        if np.any(encoding):
-            return np.any(fr.compare_faces(self.__reference_encodings,
-                                           encoding[0],
-                                           self.__rs.tolerance))
-        return False
+        if not np.any(encoding):
+            return 0
+        distance = fr.face_distance(self.__reference_encodings, encoding[0])
+        return len(np.where(distance <= self.__rs.tolerance)[0])
 
     def __reset_frames(self):
         self.__process_frames.clear()
@@ -220,22 +202,27 @@ class FaceGrab(object):
     def __get_location_frames(self):
         '''Get the total faces detected and f.indexed locations/original/process based on hits.'''
         batch = fr.batch_face_locations(self.__process_frames, 1, self.__ps.batch_size)
-        hits = np.nonzero(batch)[0] # fancy
+        hits = np.nonzero(batch)[0]
         locations = np.asarray(batch)[hits]
-        original = np.asarray(self.__original_frames)[hits]
-        process = np.asarray(self.__process_frames)[hits]
-        total = sum(len(x) for x in locations)
-
-        return (total, zip(locations, original, process))
+        return (sum(len(x) for x in locations),
+                zip(np.asarray(batch)[hits],
+                    np.asarray(self.__original_frames)[hits],
+                    np.asarray(self.__process_frames)[hits]))
 
     def __get_faces(self, image, face_locations):
-        '''Get the faces from a set of locations'''
+        '''Get the quick cropped faces and scaled locations from
+        a set of detect locations'''
         for location in face_locations:
-            face = self.__extract(image, location, self.__ps.scale, self.__ps.extract_size)
-            yield face
+            factor = int(1 / self.__ps.scale)
+            scaled = tuple(factor * n for n in location)
+            top, right, bottom, left = scaled
+            yield (image[top:bottom, left:right], scaled)
 
     def __save_extract(self, image, file_path):
-        '''Saves the face to file_path at the set extract size'''
+        '''Saves the image to file_path at the extract dimensions'''
+        iw, ih, _ = np.shape(image)
+        if (iw, ih) != self.__extract_dim:
+            image = cv2.resize(image, self.__extract_dim, interpolation=cv2.INTER_AREA)
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
         if self.__ps.display_output:
@@ -257,24 +244,27 @@ class FaceGrab(object):
         '''Handles each batch of detected faces, performing recognition on each'''
         total, results = self.__get_location_frames()
         self.__reset_frames()
+        extracted = 0
         with tqdm(total=total, unit='checks') as progress:
             progress.set_description(f'Batch #{batch_count}')
             if not total:
                 return
-            extracted = 0
-            # each set of face locations in the batch
             for locations, original, processed in results:
                 if self.__ps.display_output:
                     self.__draw_detection(processed, locations)
-                for face in self.__get_faces(original, locations):
+                for face, location_scaled in self.__get_faces(original, locations):
                     progress.update(1)
                     progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
-                    if self.__recognise(face):
+                    recognised = self.__recognise(face)
+                    if recognised:
                         extracted += 1
-                        name = path.join(output_path, f'{self.__total_extracted}.jpg')
+                        landmarks = fr.api._raw_face_landmarks(original, [location_scaled])
+                        if any(landmarks):
+                            face = self.__transform(original, landmarks[0], 48)
+                        name = path.join(output_path, f'{recognised}-{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
-                        # image v.unlikely to have target face more than once
-                        # however this only holds true if we have a reference
+                        # v.unlikely to have target multiple times
+                        # break if we have references
                         if self.reference_count:
                             break
 
@@ -284,6 +274,7 @@ class FaceGrab(object):
 
     def __batch_builder(self, output_path, sequence, total_frames):
         '''Splits the fames in batches and keeps score'''
+        tqdm.monitor_interval = 0
         with tqdm(total=total_frames, unit='frame') as progress:
             batch_count = 0
             for frame, frame_count in self.__get_fame(sequence, total_frames):
@@ -324,16 +315,13 @@ class FaceGrab(object):
         '''
         self.__total_extracted = 0
         sequence = cv2.VideoCapture(input_path)
-        frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
-        work = int(frames / self.__ps.skip_frames)
+        frame_count = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
+        work = int(frame_count / self.__ps.skip_frames)
         batches = int(work / self.__ps.batch_size)
+        self.__batch_builder(output_path, sequence, frame_count)
         print(f'Processing {input_path} ({self.__ps.scale} scale)')
-        print(f'References {self.reference_count} at {self.__rs.tolerance} tolerance')
-        print(f'Checking {work} of {frames} frames in {batches} batches of {self.__ps.batch_size}')
-        # prevent v.intermittent
-        # 'tqdm' object has no attribute 'miniters'
-        tqdm.monitor_interval = 0
-        self.__batch_builder(output_path, sequence, frames)
+        print(f'References {self.reference_count} ({self.__rs.tolerance} tolerance)')
+        print(f'Checking {work}/{frame_count} in {batches} batches of {self.__ps.batch_size}')
 
 if __name__ == '__main__':
     import argparse
