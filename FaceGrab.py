@@ -90,7 +90,8 @@ class FaceGrab(object):
     @classmethod
     def __get_matrix(cls, face):
         '''
-        Estimated N-D similarity transform with scaling adapted from _umeyama
+        2D similarity transform with scaling
+        adapted from _umeyama
         https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py#L72
         http://web.stanford.edu/class/cs273/refs/umeyama.pdf
         '''
@@ -98,13 +99,13 @@ class FaceGrab(object):
         mean_reference = np.asarray([0.49012666, 0.46442368])
         dx = face - mean_face
         d = np.ones((2,))
-        T = np.identity(3)
-        U, s, V = np.linalg.svd(cls._MEAN_FACE_TRANSPOSED @ dx / 51)
-        T[:2, :2] = U @ np.diag(d) @ V
-        scale = 1.0 / dx.var(0).sum() * s @ d
-        T[:2, 2] = mean_reference - scale * T[:2, :2] @ mean_face.T
-        T[:2, :2] *= scale
-        return T
+        mat = np.identity(3)
+        U, s, V = np.linalg.svd(cls._MEAN_FACE_TRANSPOSED @ dx / 51) #Eq.38
+        mat[:2, :2] = U @ np.diag(d) @ V #Eq.39
+        scale = 1.0 / dx.var(0).sum() * s @ d #Eq.41 Eq.42
+        mat[:2, 2] = mean_reference - scale * mat[:2, :2] @ mean_face.T
+        mat[:2, :2] *= scale
+        return mat
 
     @property
     def reference_count(self):
