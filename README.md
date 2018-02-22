@@ -126,7 +126,7 @@ Also If you want to ensure you have recognition encodings before you begin...
 FG = FaceGrab('./images/nick-cage-reference')
 if FG.reference_count:
     FG.process('./movies/The Wicker Man.mp4', './extracted/nick-cage-wicker-man')
-``
+```
 
 ## Output details
 
