@@ -38,7 +38,6 @@ class ProcessSettings(NamedTuple):
     display_output: bool = False
 
 class FaceGrab(object):
-
     '''
     It sure grabs faces! (tm)
         :param str reference: Path to a input data (video/image sequence)
