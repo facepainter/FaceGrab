@@ -74,16 +74,16 @@ class FaceGrab(object):
          0.00000034, 0.06203034, 0.19974734, 0.06323734, 0.00000034,
          -0.06323666],
         [-0.35796968, -0.42550868, -0.44567548, -0.42993458, -0.38703308,
-        -0.38703308, -0.42993458, -0.44567548, -0.42550868, -0.35796968,
-        -0.26107168, -0.15741468, -0.05461868, 0.05120132, 0.12290232,
-        0.14492132, 0.16368232, 0.14492132, 0.12290232, -0.24800068,
-        -0.28566568, -0.28457168, -0.23269068, -0.21932468, -0.22034668,
-        -0.23269068, -0.28457168, -0.28566568, -0.24800068, -0.22034668,
-        -0.21932468, 0.31580932, 0.28098132, 0.26296432, 0.27815432,
-        0.26296432, 0.28098132, 0.31580932, 0.40038132, 0.43776832,
-        0.44485732, 0.43776832, 0.40038132, 0.32036832, 0.31432232,
-        0.32091932, 0.31432232, 0.32036832, 0.35975832, 0.36737932,
-        0.35975832]])
+         -0.38703308, -0.42993458, -0.44567548, -0.42550868, -0.35796968,
+         -0.26107168, -0.15741468, -0.05461868, 0.05120132, 0.12290232,
+         0.14492132, 0.16368232, 0.14492132, 0.12290232, -0.24800068,
+         -0.28566568, -0.28457168, -0.23269068, -0.21932468, -0.22034668,
+         -0.23269068, -0.28457168, -0.28566568, -0.24800068, -0.22034668,
+         -0.21932468, 0.31580932, 0.28098132, 0.26296432, 0.27815432,
+         0.26296432, 0.28098132, 0.31580932, 0.40038132, 0.43776832,
+         0.44485732, 0.43776832, 0.40038132, 0.32036832, 0.31432232,
+         0.32091932, 0.31432232, 0.32036832, 0.35975832, 0.36737932,
+         0.35975832]])
 
     @classmethod
     def __similarity_transform(cls, face):
@@ -97,7 +97,7 @@ class FaceGrab(object):
         mean_reference = np.asarray([0.49012666, 0.46442368])
         dx = face - mean_face
         d = np.ones((2,))
-        T = np.identity(3)
+        T = np.identity(3, dtype=np.float64)
         U, s, V = np.linalg.svd(np.dot(cls._MEAN_FACE_TRANSPOSED, dx) / 51)
         T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
         scale = 1.0 / dx.var(axis=0).sum() * np.dot(s, d)
@@ -172,13 +172,18 @@ class FaceGrab(object):
     def __recognise(self, face):
         '''Checks a given face against any known reference encodings.
         Returns total number of reference encodings below or equal to tolerance.
-        If no reference encodings are loaded returns -1
-        If no face encoding can be found returns 0'''
+        Recognised returns a number between 1 and total number of reference encodings.
+        NOT recognised returns 0
+        NO reference encodings are loaded returns -1
+        NO face encoding can be found returns 0'''
         if not self.reference_count:
             return -1
         encoding = fr.face_encodings(face, None, self.__rs.jitter)
         if not np.any(encoding):
             return 0
+        # done this way to "score" the result
+        # TODO: maybe average pass e.g.
+        # np.mean(distance[np.where(distance <= self.__rs.tolerance)[0]])
         distance = fr.face_distance(self.__reference_encodings, encoding[0])
         return len(np.where(distance <= self.__rs.tolerance)[0])
 
@@ -278,6 +283,22 @@ class FaceGrab(object):
                     batch_count += 1
                     self.__do_batch(batch_count, output_path)
 
+    def stats(self):
+        '''Prints out statistics on the current references'''
+        if not self.reference_count:
+            print(f'Error: No reference encodings currently loaded')
+            return
+        matches = []
+        distances = []
+        for encoding in self.__reference_encodings:
+            group = [x for x in self.__reference_encodings if not np.array_equal(x, encoding)]
+            if group:
+                matches.append(fr.compare_faces(group, encoding, self.__rs.tolerance))
+                distances.append(fr.face_distance(group, encoding))
+        print(f'Consistancy {round(np.average(matches) * 100, 2)}%')
+        print(f'Distance Avg. {np.average(distances)}')
+        print(f'Distance std {np.std(distances)}')
+
     def save(self, file_path):
         '''
         Saves references in compressed npz format to the given path
@@ -336,7 +357,9 @@ if __name__ == '__main__':
     (read like ./frames/img_0000.jpg, ./frames/img_0001.jpg, ./frames/img_0002.jpg, ...)''')
     AP.add_argument('-o', '--output', type=str, required=True,
                     help='''Path to output directory''')
-    # Optional save settings
+    # Optional settings
+    AP.add_argument('-ds', '--display_stats', action='store_true',
+                    help='''Show the reference encoding statistics (model consistency).''')
     AP.add_argument('-sr', '--save_references', type=str,
                     help='''Save the references in .npz format.
                     This file can be loaded as a reference avoiding the need
@@ -375,6 +398,8 @@ if __name__ == '__main__':
                          scale=ARGS.scale,
                          display_output=ARGS.display_output)
     FG = FaceGrab(ARGS.reference, RS, PS)
+    if ARGS.display_stats:
+        FG.stats()
     if ARGS.save_references:
         FG.save(ARGS.save_references)
     FG.process(ARGS.input, ARGS.output)
