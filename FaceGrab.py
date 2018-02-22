@@ -86,11 +86,11 @@ class FaceGrab(object):
          3.59758320e-01]])
 
     @classmethod
-    def __umeyama(cls, face):
+    def __similarity_transform(cls, face):
         '''
-        N-D similarity transform with scaling between face and mean face values.
-        Adapted from:
-        https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py
+        N-D similarity transform with scaling
+        Adapted from _umeyama:
+        https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py#L72
         http://web.stanford.edu/class/cs273/refs/umeyama.pdf
         '''
         mx = face.mean(axis=0)
@@ -98,24 +98,10 @@ class FaceGrab(object):
         dx = face - mx
         A = np.dot(cls._MEAN_FACE_TRANSPOSED, dx) / 51
         d = np.ones((2,), dtype=np.double)
-        if np.linalg.det(A) < 0:
-            d[1] = -1
-        T = np.eye(3, dtype=np.double)
-        U, S, V = np.linalg.svd(A)
-        rank = np.linalg.matrix_rank(A) #covariance
-        if rank == 0:
-            return np.nan * T
-        elif rank == 1:
-            if np.linalg.det(U) * np.linalg.det(V) > 0:
-                T[:2, :2] = np.dot(U, V)
-            else:
-                s = d[1]
-                d[1] = -1
-                T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
-                d[1] = s
-        else:
-            T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
-        scale = 1.0 / dx.var(axis=0).sum() * np.dot(S, d)
+        T = np.identity(3)
+        U, s, V = np.linalg.svd(A)
+        T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
+        scale = 1.0 / dx.var(axis=0).sum() * np.dot(s, d)
         T[:2, 2] = my - scale * np.dot(T[:2, :2], mx.T)
         T[:2, :2] *= scale
         return T
@@ -151,7 +137,7 @@ class FaceGrab(object):
     def __transform(self, image, landmarks, padding=0):
         '''Affine transform between image landmarks and "mean face"'''
         coordinates = [(p.x, p.y) for p in landmarks.parts()]
-        mat = self.__umeyama(np.asarray(coordinates[17:]))[0:2]
+        mat = self.__similarity_transform(np.asarray(coordinates[17:]))[0:2]
         mat = mat * (self.__ps.extract_size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LINEAR)
@@ -224,6 +210,7 @@ class FaceGrab(object):
         '''Saves the image to file_path at the extract dimensions'''
         iw, ih, _ = np.shape(image)
         if (iw, ih) != self.__extract_dim:
+            # only called if we haven't transformed
             image = cv2.resize(image, self.__extract_dim, interpolation=cv2.INTER_AREA)
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
