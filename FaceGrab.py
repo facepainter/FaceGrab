@@ -140,7 +140,7 @@ class FaceGrab(object):
         mat = self.__get_matrix(np.asarray(coordinates[17:]))[0:2]
         mat = mat * (self.__ps.extract_size - 2 * padding)
         mat[:, 2] += padding
-        return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LINEAR)
+        return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LANCZOS4)
 
     def __check_reference(self, reference):
         '''Checks if the reference is a wild-card/directory/file and looks for encodings'''
@@ -215,7 +215,7 @@ class FaceGrab(object):
         '''Saves the image to file_path at the extract dimensions'''
         width, height, _ = np.shape(image)
         if (width, height) != self.__extract_dim:
-            image = cv2.resize(image, self.__extract_dim, interpolation=cv2.INTER_AREA)
+            image = cv2.resize(image, self.__extract_dim, interpolation=cv2.INTER_LANCZOS4)
         cv2.imwrite(file_path, image)
         self.__total_extracted += 1
         if self.__ps.display_output:
