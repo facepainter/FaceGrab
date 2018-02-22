@@ -59,6 +59,8 @@ class FaceGrab(object):
         self.__reference_encodings = []
         self.__total_extracted = 0
         self.__extract_dim = (self.__ps.extract_size, self.__ps.extract_size)
+        # TODO: prop/arg @18%256=46 
+        self.__extract_pad = int(self.__ps.extract_size / 100 * 18) 
         self.__check_reference(reference)
 
     _MEAN_FACE_TRANSPOSED = np.asarray([
@@ -236,6 +238,7 @@ class FaceGrab(object):
         total, results = self.__get_location_frames()
         self.__reset_frames()
         extracted = 0
+
         with tqdm(total=total, unit='checks') as progress:
             progress.set_description(f'Batch #{batch_count}')
             if not total:
@@ -252,8 +255,7 @@ class FaceGrab(object):
                         # NB: protected-access - eek!
                         landmarks = fr.api._raw_face_landmarks(original, [location_scaled])
                         if any(landmarks):
-                            padding = int(self.__ps.extract_size / 100 * 18) # 18%
-                            face = self.__transform(original, landmarks[0], padding)
+                            face = self.__transform(original, landmarks[0], self.__extract_pad)
                         name = path.join(output_path, f'{recognised}-{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
                         # v.unlikely to have target multiple times
