@@ -80,20 +80,20 @@ if FG.reference_count:
 
 ## Output details
 
-tl;dr Sort the output images by name
+tl;dr - Sort the output images by name
 
 Any faces detected and recognised in the input will be saved in the specified output directory.
 The naming convention is simple and should allow you to quickly sort for any false positives in the results.
 
-For example, imagine you have the following frames in your output folder
+For example, imagine you have the following images in your output folder
 
-* `9-345.jpg` - 345 matched 9 references
+* `9-345.jpg` - 345 matched 9 references 
 * `4-343.jpg` - 343 matched 4 references 
-* `1-276.jpg` - 276 matched 1 reference
+* `1-276.jpg` - 276 matched 1 reference 
 
 Each extracted face has been given a two number name (separated by a hyphen) in the format `X-Y.jpg`
-Where `X` represents the number of matches - i.e. a number between 1 and the total number references -
-and `Y` is a unique extract number. 
+Where `X` represents the number of reference  matches for that image - i.e. a number between 1 and the total number references -
+and `Y` is a unique extract number for each image. 
 
 This way you can quickly sort the extracted frames to check for false positives in the results - as frames with a low reference match count will have corresponding lower starting numbers.
 
