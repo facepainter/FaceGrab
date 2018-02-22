@@ -10,7 +10,7 @@ from typing import NamedTuple
 
 import cv2
 import numpy as np
-import face_recognition.api as fr
+import face_recognition as fr
 from tqdm import tqdm
 
 class RecognitionSettings(NamedTuple):
@@ -86,10 +86,9 @@ class FaceGrab(object):
          0.35975832]])
 
     @classmethod
-    def __similarity_transform(cls, face):
+    def __get_matrix(cls, face):
         '''
-        Estimated N-D similarity transform with scaling
-        Adapted from _umeyama
+        Estimated N-D similarity transform with scaling adapted from _umeyama
         https://github.com/scikit-image/scikit-image/blob/master/skimage/transform/_geometric.py#L72
         http://web.stanford.edu/class/cs273/refs/umeyama.pdf
         '''
@@ -97,7 +96,7 @@ class FaceGrab(object):
         mean_reference = np.asarray([0.49012666, 0.46442368])
         dx = face - mean_face
         d = np.ones((2,))
-        T = np.identity(3, dtype=np.float64)
+        T = np.identity(3)
         U, s, V = np.linalg.svd(np.dot(cls._MEAN_FACE_TRANSPOSED, dx) / 51)
         T[:2, :2] = np.dot(U, np.dot(np.diag(d), V))
         scale = 1.0 / dx.var(axis=0).sum() * np.dot(s, d)
@@ -136,7 +135,7 @@ class FaceGrab(object):
     def __transform(self, image, landmarks, padding=0):
         '''Affine transform between image landmarks and "mean face"'''
         coordinates = [(p.x, p.y) for p in landmarks.parts()]
-        mat = self.__similarity_transform(np.asarray(coordinates[17:]))[0:2]
+        mat = self.__get_matrix(np.asarray(coordinates[17:]))[0:2]
         mat = mat * (self.__ps.extract_size - 2 * padding)
         mat[:, 2] += padding
         return cv2.warpAffine(image, mat, self.__extract_dim, None, flags=cv2.INTER_LINEAR)
@@ -155,7 +154,7 @@ class FaceGrab(object):
                         self.__parse_encoding(full_path)
             return
         if path.isfile(reference):
-            if reference.endswith('.npz'): #saved
+            if reference.endswith('.npz'):
                 self.load(reference)
                 return
             self.__parse_encoding(reference)
@@ -168,6 +167,8 @@ class FaceGrab(object):
         encoding = fr.face_encodings(image, None, self.__rs.jitter)
         if np.any(encoding):
             self.__reference_encodings.append(encoding[0])
+        else:
+            tqdm.write(f'No encoding: {image_path}')
 
     def __recognise(self, face):
         '''Checks a given face against any known reference encodings.
@@ -181,9 +182,7 @@ class FaceGrab(object):
         encoding = fr.face_encodings(face, None, self.__rs.jitter)
         if not np.any(encoding):
             return 0
-        # done this way to "score" the result
-        # TODO: maybe average pass e.g.
-        # np.mean(distance[np.where(distance <= self.__rs.tolerance)[0]])
+        # maybe? np.mean(distance[np.where(distance <= self.__rs.tolerance)[0]])
         distance = fr.face_distance(self.__reference_encodings, encoding[0])
         return len(np.where(distance <= self.__rs.tolerance)[0])
 
@@ -197,7 +196,7 @@ class FaceGrab(object):
         hits = np.nonzero(batch)[0]
         locations = np.asarray(batch)[hits]
         return (sum(len(x) for x in locations),
-                zip(np.asarray(batch)[hits],
+                zip(locations,
                     np.asarray(self.__original_frames)[hits],
                     np.asarray(self.__process_frames)[hits]))
 
@@ -251,7 +250,7 @@ class FaceGrab(object):
                     if recognised:
                         extracted += 1
                         # NB: protected-access - eek!
-                        landmarks = fr._raw_face_landmarks(original, [location_scaled])
+                        landmarks = fr.api._raw_face_landmarks(original, [location_scaled])
                         if any(landmarks):
                             padding = int(self.__ps.extract_size / 100 * 18) # 18%
                             face = self.__transform(original, landmarks[0], padding)
@@ -328,9 +327,9 @@ class FaceGrab(object):
         frame_count = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
         work = int(frame_count / self.__ps.skip_frames)
         batches = int(work / self.__ps.batch_size)
-        print(f'Processing {input_path} ({self.__ps.scale} scale)')
-        print(f'References {self.reference_count} ({self.__rs.tolerance} tolerance)')
-        print(f'Checking {work}/{frame_count} in {batches} batches of {self.__ps.batch_size}')
+        print(f'Processing {input_path} (scale:{self.__ps.scale})')
+        print(f'References {self.reference_count} (tolerance:{self.__rs.tolerance})')
+        print(f'Checking {work}/{frame_count} frames in {batches} batches of {self.__ps.batch_size}')
         self.__batch_builder(output_path, sequence, frame_count)
 
 if __name__ == '__main__':
