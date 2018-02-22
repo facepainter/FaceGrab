@@ -91,7 +91,8 @@ For example, imagine you have the following frames in your output folder
 * `1-276.jpg` - 276 matched 1 reference
 
 Each extracted face has been given a two number name (separated by a hyphen) in the format `X-Y.jpg`
-Where `X` represents the number of matches - i.e. a number between 1 and the total number references and `Y` is a unique extract number. 
+Where `X` represents the number of matches - i.e. a number between 1 and the total number references -
+and `Y` is a unique extract number. 
 
 This way you can quickly sort the extracted frames to check for false positives in the results - as frames with a low reference match count will have corresponding lower starting numbers.
 
