@@ -1,3 +1,4 @@
+
 # FaceGrab
 
 Batch extract aligned images of a known face from a video or image sequence.
@@ -115,8 +116,8 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 
 ### Too many blurry results (extracted images are out of focus, etc)
 
-1. Increase the **process.blur_threshold** so that the test for variarence in extracted face edges is stricter.
-1a. Also decrease the **process.skip_frames** so that more of the input is processed (so that you have a higher chance of good input frames)
+1. Increase the **process.blur_threshold** so that the test for variance in extracted face edges is stricter.
+2. Also decrease the **process.skip_frames** so that more of the input is processed (so that you have a higher chance of good input frames)
 
 ### Too many false positives (extracted images of the wrong face/not faces)
 
@@ -138,6 +139,4 @@ You could also try re-encoding the video to a lower resolution, but that is chea
 - dlib - https://github.com/davisking/dlib.git compiled with CUDA (and preferably AVX) see notes.
 - Visual C++ 2015 Build Tools - http://landinghub.visualstudio.com/visual-cpp-build-tools
 
-YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 on WindBlows :( In linux not a problem - in short - go for the latest verions you can build against :)
-
-
+YMMV - pretty sure it would work just as well with CUDA 9 / cuDNN 7 / etc - but personally I could not get dlib to build with CUDA support against v9/9.1 on WindBlows...In linux not a problem - in short - go for the latest verions you can build against :)
