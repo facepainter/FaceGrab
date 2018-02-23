@@ -111,7 +111,7 @@ class FaceGrab(object):
     @staticmethod
     def __is_blurred(image, threshold):
         '''Fast Laplacian edge variance check.
-        Returns True if edge variance is below threshold, otherwise True'''
+        Returns True if edge variance is below threshold'''
         grayed = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         return cv2.Laplacian(grayed, cv2.CV_64F).var() < threshold
 
