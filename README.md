@@ -113,13 +113,18 @@ The two key things being
 
 You could also try re-encoding the video to a lower resolution, but that is cheating and punishable by...nothing.
 
-### If you are getting too many false positives (extracted images of the wrong face/not faces)
+### Too many blurry results (extracted images are out of focus, etc)
+
+1. Increase the **process.blur_threshold** so that the test for variarence in extracted face edges is stricter.
+1a. Also decrease the **process.skip_frames** so that more of the input is processed (so that you have a higher chance of good input frames)
+
+### Too many false positives (extracted images of the wrong face/not faces)
 
 1. Use a more varied, higher quality, more representative, range of **reference**  images (ideally ones that look like the person in the input)
 2. Increase the **recognition.jitter** so that each encoding/check is done using a higher number of resamples - note this will increase the processing time.
 3. Decrease the **recognition.tolerance** so that each recognition is stricter e.g. 0.55
 
-### If you are getting too few matches (missing lots of good images from input)
+### Too few matches (missing lots of good images from input)
 
 1. Use a more varied, higher quality, more representative, range of **reference**  images (ideally ones that look like the person in the input)
 2. Increase the **recognition.tolerance** so that each recognition is less strict e.g. 0.65
