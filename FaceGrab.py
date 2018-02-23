@@ -30,12 +30,14 @@ class ProcessSettings(NamedTuple):
         :param int extract_size: Size in pixels of extracted face images (n*n).
         :param float scale: Amount to down-sample input by for detection processing.
         :param bool display_output: Show the detection and extraction images in process.
+        :param float blur_threshold: Minimum edge variance to consider extract blurry.
     '''
     batch_size: int = 128
     skip_frames: int = 6
     extract_size: int = 256
     scale: float = .25
     display_output: bool = False
+    blur_threshold: float = 10.0
 
 class FaceGrab(object):
     '''
@@ -105,6 +107,13 @@ class FaceGrab(object):
         mat[:2, 2] = mean_reference - scale * mat[:2, :2] @ mean_face.T
         mat[:2, :2] *= scale
         return mat
+
+    @staticmethod
+    def __is_blurred(image, threshold):
+        '''Fast Laplacian edge variance check.
+        Returns True if edge variance is above threshold, otherwise False'''
+        grayed = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return cv2.Laplacian(grayed, cv2.CV_64F).var() > threshold
 
     @property
     def reference_count(self):
@@ -257,12 +266,14 @@ class FaceGrab(object):
                     progress.set_description(f'Batch #{batch_count} (recognised {extracted})')
                     recognised = self.__recognise(face)
                     if recognised:
-                        extracted += 1
                         points = self.__landmark_points(original, [location_scaled])
                         if np.any(points):
                             face = self.__transform(original, points, self.__extract_pad)
+                        if not self.__is_blurred(face, self.__ps.blur_threshold):
+                            continue
                         name = path.join(output_path, f'{recognised}-{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
+                        extracted += 1
                         # v.unlikely to have target multiple times
                         # break if we have references
                         if self.reference_count:
@@ -389,6 +400,9 @@ if __name__ == '__main__':
     If you get too few matches try scaling by half e.g. 0.5''')
     AP.add_argument('-do', '--display_output', action='store_true',
                     help='''Show the detection and extraction images (slows processing).''')
+    AP.add_argument('-bt', '--blur_threshold', type=float, default=10, choices=[Range(0, 9999)],
+                    metavar='[0-9999]',
+                    help='''Extract blur threshold, higher values are stricter. Default is 10''')
     # Optional recognition settings
     AP.add_argument('-t', '--tolerance', type=float, default=0.6, choices=[Range(0.1, 1.0)],
                     metavar='[0.1-1.0]',
@@ -405,7 +419,8 @@ if __name__ == '__main__':
                          skip_frames=ARGS.skip_frames,
                          extract_size=ARGS.extract_size,
                          scale=ARGS.scale,
-                         display_output=ARGS.display_output)
+                         display_output=ARGS.display_output,
+                         blur_threshold=ARGS.blur_threshold)
     FG = FaceGrab(ARGS.reference, RS, PS)
     if ARGS.display_stats:
         FG.stats()
