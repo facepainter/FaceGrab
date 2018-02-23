@@ -111,9 +111,9 @@ class FaceGrab(object):
     @staticmethod
     def __is_blurred(image, threshold):
         '''Fast Laplacian edge variance check.
-        Returns True if edge variance is above threshold, otherwise False'''
+        Returns True if edge variance is below threshold, otherwise True'''
         grayed = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        return cv2.Laplacian(grayed, cv2.CV_64F).var() > threshold
+        return cv2.Laplacian(grayed, cv2.CV_64F).var() < threshold
 
     @property
     def reference_count(self):
@@ -269,7 +269,7 @@ class FaceGrab(object):
                         points = self.__landmark_points(original, [location_scaled])
                         if np.any(points):
                             face = self.__transform(original, points, self.__extract_pad)
-                        if not self.__is_blurred(face, self.__ps.blur_threshold):
+                        if self.__is_blurred(face, self.__ps.blur_threshold):
                             continue
                         name = path.join(output_path, f'{recognised}-{self.__total_extracted}.jpg')
                         self.__save_extract(face, name)
