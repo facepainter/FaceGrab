@@ -12,18 +12,6 @@ at at time can be achieved (VRAM dependant). This combined with other speed/opti
 faces can be extracted from video or image sequences file many times faster than using seperate
 frame splitting/extraction/detection applications, or by methods that are CPU bound and only operate on individual images.
 
-The general steps in the process are:
-
-1) Acquire images and downsample them
-3) Batch detect face locations in downsampled images
-4) Upscale detected locations and extract from originals
-5) Check if extracts are recognised*
-6) Warp extracts to mean face pose 
-7) Save warped face if not too blurry
-
-* Where "recognised" means the Euclidean distance between any reference encoding and an unknown face encoding is
-below the given recognition tolerance. 
-
 > One important caveat in this process is that the input frames/images must be exactly the same dimensions.
 > As this is primarily geared towards extraction from video this should not be an issue.
 > However it is worth bearing in mind should you get errors processing image sequences :)
