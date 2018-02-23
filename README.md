@@ -4,13 +4,25 @@ Batch extract aligned images of a known face from a video or image sequence.
 
 Uses a combination of a (precomputed) deep learning CNN model to quickly batch detect faces
 in video frames then HoG face recognition with single or multiple encodings computed from known references.
-Then a (precomputed) set of avarage face landmarks to transpose and extract any recognised faces to a normalised pose.  
+Then a (precomputed) set of average face landmarks to transpose and extract any recognised faces to a normalised pose.  
 
 Using the GPU with CUDA in this way means batch processing face detection in up to 128 frames
 at at time can be achieved (VRAM dependant). This combined with other speed/optimisation techniques
 (such as downsampling the process frames, early frame skipping, etc) means that very high quality, normalised, low false positive, 
 faces can be extracted from video or image sequences file many times faster than using seperate
 frame splitting/extraction/detection applications, or by methods that are CPU bound and only operate on individual images.
+
+The general steps in the process are:
+
+1) Acquire images and downsample them
+3) Batch detect face locations in downsampled images
+4) Upscale detected locations and extract from originals
+5) Check if extracts are recognised*
+6) Warp extracts to mean face pose 
+7) Save warped face if not too blurry
+
+* Where "recognised" means the Euclidean distance between any reference encoding and an unknown face encoding is
+below the given recognition tolerance. 
 
 > One important caveat in this process is that the input frames/images must be exactly the same dimensions.
 > As this is primarily geared towards extraction from video this should not be an issue.
