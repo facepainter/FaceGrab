@@ -111,7 +111,7 @@ class FaceGrab(object):
     @staticmethod
     def __is_blurred(image, threshold):
         '''Fast Laplacian edge variance check.
-        Returns True if edge variance is below threshold'''
+        Returns True if image edge variance is below threshold'''
         grayed = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         return cv2.Laplacian(grayed, cv2.CV_64F).var() < threshold
 
@@ -177,6 +177,7 @@ class FaceGrab(object):
                 self.load(reference)
             else:
                 self.__parse_encoding(reference)
+            return
         raise ValueError(f'Invalid reference: {reference}')
 
     def __parse_encoding(self, image_path):
